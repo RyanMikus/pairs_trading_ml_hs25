@@ -14592,7 +14592,7 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h1 id="2-Datensammlung">2 Datensammlung<a class="anchor-link" href="#2-Datensammlung">&#182;</a></h1><h2 id="2.1-Ziel-der-Datensammlung">2.1 Ziel der Datensammlung<a class="anchor-link" href="#2.1-Ziel-der-Datensammlung">&#182;</a></h2><p>Für die Entwicklung und Evaluation der geplanten Relative-Value-Trading-Strategie benötigen wir hochfrequente Kursdaten eines breiten, liquiden Aktienuniversums.<br>
+<h1 id="2.-Datensammlung">2. Datensammlung<a class="anchor-link" href="#2.-Datensammlung">&#182;</a></h1><h2 id="2.1.-Ziel-der-Datensammlung">2.1. Ziel der Datensammlung<a class="anchor-link" href="#2.1.-Ziel-der-Datensammlung">&#182;</a></h2><p>Für die Entwicklung und Evaluation der geplanten Relative-Value-Trading-Strategie benötigen wir hochfrequente Kursdaten eines breiten, liquiden Aktienuniversums.<br>
 In diesem Projekt arbeiten wir mit <strong>1-Minuten-Intradaydaten</strong> für alle Aktien des <strong>S&amp;P 500</strong>. Diese Daten bilden die Grundlage für die anschließende explorative Datenanalyse (EDA) sowie für das spätere Feature Engineering und die Modellierung mit XGBoost.</p>
 <p>Die Datensammlung gliedert sich in zwei Hauptschritte:</p>
 <ol>
@@ -14608,7 +14608,7 @@ In diesem Projekt arbeiten wir mit <strong>1-Minuten-Intradaydaten</strong> für
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[3]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[10]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
@@ -14629,7 +14629,7 @@ In diesem Projekt arbeiten wir mit <strong>1-Minuten-Intradaydaten</strong> für
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="2.2-Auswahl-des-Aktienuniversums-(S&amp;P-500-Ticker)">2.2 Auswahl des Aktienuniversums (S&amp;P-500-Ticker)<a class="anchor-link" href="#2.2-Auswahl-des-Aktienuniversums-(S&amp;P-500-Ticker)">&#182;</a></h2><p>Als Aktienuniversum verwenden wir den <strong>S&amp;P 500</strong>, einen der wichtigsten US-Aktienindizes.<br>
+<h2 id="2.2.-Auswahl-des-Aktienuniversums-(S&amp;P-500-Ticker)">2.2. Auswahl des Aktienuniversums (S&amp;P-500-Ticker)<a class="anchor-link" href="#2.2.-Auswahl-des-Aktienuniversums-(S&amp;P-500-Ticker)">&#182;</a></h2><p>Als Aktienuniversum verwenden wir den <strong>S&amp;P 500</strong>, einen der wichtigsten US-Aktienindizes.<br>
 Anstatt die Ticker manuell zu pflegen, werden sie automatisiert von Wikipedia geladen. Hierzu wird die Seite<br>
 <a href="https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"><em>List of S&amp;P 500 companies</em></a> verwendet.</p>
 <p>Mit <code>pandas.read_html</code> wird die erste Tabelle der Seite eingelesen, aus der die Spalte <code>Symbol</code> extrahiert und in eine Python-Liste umgewandelt wird.<br>
@@ -14650,10 +14650,10 @@ Da Yahoo Finance keine Punkte (<code>.</code>) in den Tickersymbolen akzeptiert 
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[&nbsp;]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[7]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># S&amp;P-500-Ticker von Wikipedia holen</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Daten holen</span>
 <span class="n">WIKI_URL</span> <span class="o">=</span> <span class="s2">"https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"</span>
 <span class="n">HEADERS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"User-Agent"</span><span class="p">:</span> <span class="s2">"Mozilla/5.0"</span><span class="p">}</span>
 
@@ -14661,18 +14661,27 @@ Da Yahoo Finance keine Punkte (<code>.</code>) in den Tickersymbolen akzeptiert 
 <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
 
 <span class="n">tables</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_html</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
-<span class="n">sp500</span> <span class="o">=</span> <span class="n">tables</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
-<span class="c1"># Symbol-Spalte</span>
+<span class="c1"># Richtige Tabelle finden</span>
+<span class="n">sp500</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tables</span><span class="p">:</span>
+    <span class="k">if</span> <span class="s2">"Symbol"</span> <span class="ow">in</span> <span class="n">t</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">sp500</span> <span class="o">=</span> <span class="n">t</span>
+        <span class="k">break</span>
+
+<span class="k">if</span> <span class="n">sp500</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Keine Tabelle mit 'Symbol'-Spalte gefunden"</span><span class="p">)</span>
+
+<span class="c1"># Ticker extrahieren</span>
 <span class="n">tickers</span> <span class="o">=</span> <span class="n">sp500</span><span class="p">[</span><span class="s2">"Symbol"</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
 
-<span class="c1"># Yahoo mag keine Punkte – BRK.B → BRK-B</span>
+<span class="c1"># Yahoo mag keine Punkte</span>
 <span class="n">tickers</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"."</span><span class="p">,</span> <span class="s2">"-"</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tickers</span><span class="p">]</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="s2">"Anzahl Ticker:"</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">tickers</span><span class="p">))</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"Beispiele:"</span><span class="p">,</span> <span class="n">tickers</span><span class="p">[:</span><span class="mi">10</span><span class="p">])</span>
 
-<span class="c1"># In CSV speichern ===</span>
+<span class="c1"># Speichern</span>
 <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">"symbol"</span><span class="p">:</span> <span class="n">tickers</span><span class="p">})</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s2">"Daten/sp500_tickers.csv"</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"Gespeichert als sp500_tickers.csv"</span><span class="p">)</span>
 </pre></div>
@@ -14714,13 +14723,15 @@ Gespeichert als sp500_tickers.csv
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="2.3-Abruf-der-Intraday-Kursdaten-%C3%BCber-die-Yahoo-Finance-API">2.3 Abruf der Intraday-Kursdaten &#252;ber die Yahoo-Finance-API<a class="anchor-link" href="#2.3-Abruf-der-Intraday-Kursdaten-%C3%BCber-die-Yahoo-Finance-API">&#182;</a></h2><p>Für die eigentlichen Kursdaten nutzen wir <strong>1-Minuten-Intradaydaten</strong> von <strong>Yahoo Finance</strong>.<br>
+<h2 id="2.3.-Abruf-der-Intraday-Kursdaten-%C3%BCber-die-Yahoo-Finance-API">2.3. Abruf der Intraday-Kursdaten &#252;ber die Yahoo-Finance-API<a class="anchor-link" href="#2.3.-Abruf-der-Intraday-Kursdaten-%C3%BCber-die-Yahoo-Finance-API">&#182;</a></h2><p>Für die eigentlichen Kursdaten nutzen wir <strong>1-Minuten-Intradaydaten</strong> von <strong>Yahoo Finance</strong>.<br>
 Da die Python-Bibliothek <code>yfinance</code> in der Projektumgebung nicht einsatzfähig war, erfolgt der Abruf direkt über die inoffizielle JSON-API von Yahoo Finance<br>
 (<code>https://query1.finance.yahoo.com/v8/finance/chart/{ticker}</code>).</p>
 <p>Dieser Ansatz ist in der Community gut dokumentiert, auch wenn es sich nicht um eine offiziell unterstützte Schnittstelle handelt.<br>
 Ein Beispiel für eine Beschreibung der API ist hier zu finden:<br>
-<a href="https://scrapfly.io/blog/posts/guide-to-yahoo-finance-api">Guide to Yahoo Finance API (Scrapfly)</a></p>
-<h3 id="2.3.1-Parameterdefinition">2.3.1 Parameterdefinition<a class="anchor-link" href="#2.3.1-Parameterdefinition">&#182;</a></h3><p>Zu Beginn werden die zentralen Parameter festgelegt:</p>
+<a href="https://scrapfly.io/blog/posts/guide-to-yahoo-finance-api">Guide to Yahoo Finance API (Scrapfly)</a>
+Aufgrund einer Beschränkung der Yahoo-Finance-API stehen Kursdaten mit einer Frequenz von einer Minute nur für den aktuellen Handelstag beziehungsweise den zuletzt abgeschlossenen Börsentag (sofern kein neuer Handelstag begonnen hat) zur Verfügung.
+Um dennoch einen fortlaufenden Datensatz aufzubauen, wird das Skript nach jedem Handelstag ausgeführt und speichert die neu verfügbaren Daten sukzessive ab.</p>
+<h3 id="2.3.1.-Parameterdefinition">2.3.1. Parameterdefinition<a class="anchor-link" href="#2.3.1.-Parameterdefinition">&#182;</a></h3><p>Zu Beginn werden die zentralen Parameter festgelegt:</p>
 <ul>
 <li><code>DATE</code> → Datum des Abrufs  </li>
 <li><code>INTERVAL</code> → Zeitintervall (z. B. 1m)  </li>
@@ -14739,11 +14750,11 @@ Die Funktion extrahiert die Zeitstempel und Kursdaten aus der JSON-Struktur und 
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[&nbsp;]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[11]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Einstellungen</span>
-<span class="n">DATE</span> <span class="o">=</span> <span class="s2">"2025-11-07"</span>       <span class="c1"># gewünschtes Datum</span>
+<span class="n">DATE</span> <span class="o">=</span> <span class="s2">"2025-11-13"</span>       <span class="c1"># gewünschtes Datum</span>
 <span class="n">INTERVAL</span> <span class="o">=</span> <span class="s2">"1m"</span>           <span class="c1"># 1-Minute-Daten</span>
 <span class="n">RANGE</span> <span class="o">=</span> <span class="s2">"1d"</span>              <span class="c1"># ein Tag</span>
 <span class="n">OUTPUT_FILE</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"Daten/sp500_1min_</span><span class="si">{</span><span class="n">DATE</span><span class="si">}</span><span class="s2">.csv"</span>
@@ -14755,7 +14766,7 @@ Die Funktion extrahiert die Zeitstempel und Kursdaten aus der JSON-Struktur und 
 <span class="p">}</span>
 
 <span class="c1"># Ticker-Liste laden</span>
-<span class="n">tickers</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">"sp500_tickers.csv"</span><span class="p">)[</span><span class="s2">"symbol"</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+<span class="n">tickers</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">"Daten/sp500_tickers.csv"</span><span class="p">)[</span><span class="s2">"symbol"</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"Lade Daten für"</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">tickers</span><span class="p">),</span> <span class="s2">"Ticker …"</span><span class="p">)</span>
 
 <span class="c1"># Funktion zum Laden eines Tickers</span>
@@ -14810,7 +14821,90 @@ Die Funktion extrahiert die Zeitstempel und Kursdaten aus der JSON-Struktur und 
 
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain">
 <pre>Lade Daten für 503 Ticker …
-[1/503] MMM: 391 Zeilen
+</pre>
+</div>
+</div>
+
+</div>
+
+</div>
+
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
+<h3 id="2.3.2.-Schleife-%C3%BCber-alle-S&amp;P-500-Ticker-und-Speicherung">2.3.2. Schleife &#252;ber alle S&amp;P-500-Ticker und Speicherung<a class="anchor-link" href="#2.3.2.-Schleife-%C3%BCber-alle-S&amp;P-500-Ticker-und-Speicherung">&#182;</a></h3><p>Für jeden Ticker im S&amp;P 500 wird die Funktion <code>fetch_yahoo_chart(...)</code> aufgerufen.<br>
+Die Daten werden gesammelt, in einer Liste zusammengeführt und schließlich als CSV-Datei gespeichert.</p>
+<ul>
+<li>Erfolgreich geladene Ticker werden zu <code>all_data</code> hinzugefügt  </li>
+<li>Fehlgeschlagene Ticker landen in der Liste <code>failed</code>  </li>
+<li>Nach jedem Request wird mit <code>time.sleep(0.1)</code> eine kleine Pause eingelegt, um das API-Rate-Limit zu respektieren</li>
+</ul>
+<p>Nach Abschluss der Schleife:</p>
+<ul>
+<li>Alle DataFrames werden mit <code>pd.concat</code> zu einem Gesamt-Dataset verbunden  </li>
+<li>Das Ergebnis wird gespeichert als<br>
+<strong><code>Daten/sp500_1min_2024-11-07.csv</code></strong></li>
+</ul>
+<p>Falls keine Daten geladen wurden, wird eine entsprechende Fehlermeldung ausgegeben.<br>
+Eine Liste der nicht verarbeiteten Ticker dient zur schnellen Fehlerdiagnose.</p>
+
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div class="jp-Cell-inputWrapper">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[5]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+     <div class="CodeMirror cm-s-jupyter">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tickers</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">df_t</span> <span class="o">=</span> <span class="n">fetch_yahoo_chart</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">INTERVAL</span><span class="p">,</span> <span class="n">RANGE</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">df_t</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">all_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df_t</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">tickers</span><span class="p">)</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df_t</span><span class="p">)</span><span class="si">}</span><span class="s2"> Zeilen"</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">failed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">tickers</span><span class="p">)</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="s2">: keine Daten"</span><span class="p">)</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># sanftes Rate-Limit</span>
+
+<span class="c1"># Zusammenführen &amp; speichern</span>
+<span class="k">if</span> <span class="n">all_data</span><span class="p">:</span>
+    <span class="n">df_all</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">all_data</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">df_all</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">OUTPUT_FILE</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Gespeichert als </span><span class="si">{</span><span class="n">OUTPUT_FILE</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df_all</span><span class="p">)</span><span class="si">}</span><span class="s2"> Zeilen)"</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Keine Daten geladen."</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">failed</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Fehlgeschlagene Ticker:"</span><span class="p">,</span> <span class="n">failed</span><span class="p">[:</span><span class="mi">20</span><span class="p">],</span> <span class="s2">"…"</span><span class="p">)</span>
+</pre></div>
+
+     </div>
+</div>
+</div>
+</div>
+
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+
+
+<div class="jp-OutputArea jp-Cell-outputArea">
+
+<div class="jp-OutputArea-child">
+
+    
+    <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+
+
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain">
+<pre>[1/503] MMM: 391 Zeilen
 [2/503] AOS: 391 Zeilen
 [3/503] ABT: 391 Zeilen
 [4/503] ABBV: 391 Zeilen
@@ -14967,7 +15061,7 @@ Die Funktion extrahiert die Zeitstempel und Kursdaten aus der JSON-Struktur und 
 [155/503] DHI: 391 Zeilen
 [156/503] DTE: 391 Zeilen
 [157/503] DUK: 391 Zeilen
-[158/503] DD: 390 Zeilen
+[158/503] DD: 391 Zeilen
 [159/503] ETN: 391 Zeilen
 [160/503] EBAY: 391 Zeilen
 [161/503] ECL: 391 Zeilen
@@ -15006,7 +15100,7 @@ Die Funktion extrahiert die Zeitstempel und Kursdaten aus der JSON-Struktur und 
 [194/503] FITB: 391 Zeilen
 [195/503] FSLR: 391 Zeilen
 [196/503] FE: 391 Zeilen
-[197/503] FI: 391 Zeilen
+[197/503] FI: keine Daten
 [198/503] F: 391 Zeilen
 [199/503] FTNT: 391 Zeilen
 [200/503] FTV: 391 Zeilen
@@ -15155,7 +15249,7 @@ Die Funktion extrahiert die Zeitstempel und Kursdaten aus der JSON-Struktur und 
 [343/503] NRG: 391 Zeilen
 [344/503] NUE: 391 Zeilen
 [345/503] NVDA: 391 Zeilen
-[346/503] NVR: 387 Zeilen
+[346/503] NVR: 389 Zeilen
 [347/503] NXPI: 391 Zeilen
 [348/503] ORLY: 391 Zeilen
 [349/503] OXY: 391 Zeilen
@@ -15259,7 +15353,7 @@ Die Funktion extrahiert die Zeitstempel und Kursdaten aus der JSON-Struktur und 
 [447/503] TKO: 391 Zeilen
 [448/503] TTD: 391 Zeilen
 [449/503] TSCO: 391 Zeilen
-[450/503] TT: 390 Zeilen
+[450/503] TT: 391 Zeilen
 [451/503] TDG: 391 Zeilen
 [452/503] TRV: 391 Zeilen
 [453/503] TRMB: 391 Zeilen
@@ -15314,7 +15408,9 @@ Die Funktion extrahiert die Zeitstempel und Kursdaten aus der JSON-Struktur und 
 [502/503] ZBH: 391 Zeilen
 [503/503] ZTS: 391 Zeilen
 
-✅ Gespeichert als sp500_1min_2024-10-25.csv (196667 Zeilen)
+Gespeichert als Daten/sp500_1min_2025-11-12.csv (196280 Zeilen)
+
+Fehlgeschlagene Ticker: [&#39;FI&#39;] …
 </pre>
 </div>
 </div>
@@ -15330,68 +15426,7 @@ Die Funktion extrahiert die Zeitstempel und Kursdaten aus der JSON-Struktur und 
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="2.4-Schleife-%C3%BCber-alle-S&amp;P-500-Ticker-und-Speicherung">2.4 Schleife &#252;ber alle S&amp;P-500-Ticker und Speicherung<a class="anchor-link" href="#2.4-Schleife-%C3%BCber-alle-S&amp;P-500-Ticker-und-Speicherung">&#182;</a></h2><p>Für jeden Ticker im S&amp;P 500 wird die Funktion <code>fetch_yahoo_chart(...)</code> aufgerufen.<br>
-Die Daten werden gesammelt, in einer Liste zusammengeführt und schließlich als CSV-Datei gespeichert.</p>
-<ul>
-<li>Erfolgreich geladene Ticker werden zu <code>all_data</code> hinzugefügt  </li>
-<li>Fehlgeschlagene Ticker landen in der Liste <code>failed</code>  </li>
-<li>Nach jedem Request wird mit <code>time.sleep(0.1)</code> eine kleine Pause eingelegt, um das API-Rate-Limit zu respektieren</li>
-</ul>
-<p>Nach Abschluss der Schleife:</p>
-<ul>
-<li>Alle DataFrames werden mit <code>pd.concat</code> zu einem Gesamt-Dataset verbunden  </li>
-<li>Das Ergebnis wird gespeichert als<br>
-<strong><code>Daten/sp500_1min_2024-11-07.csv</code></strong></li>
-</ul>
-<p>Falls keine Daten geladen wurden, wird eine entsprechende Fehlermeldung ausgegeben.<br>
-Eine Liste der nicht verarbeiteten Ticker dient zur schnellen Fehlerdiagnose.</p>
-
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
-<div class="jp-Cell-inputWrapper">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[&nbsp;]:</div>
-<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-     <div class="CodeMirror cm-s-jupyter">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tickers</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
-    <span class="n">df_t</span> <span class="o">=</span> <span class="n">fetch_yahoo_chart</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">INTERVAL</span><span class="p">,</span> <span class="n">RANGE</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">df_t</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-        <span class="n">all_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df_t</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">tickers</span><span class="p">)</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df_t</span><span class="p">)</span><span class="si">}</span><span class="s2"> Zeilen"</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">failed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">tickers</span><span class="p">)</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="s2">: keine Daten"</span><span class="p">)</span>
-    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># sanftes Rate-Limit</span>
-
-<span class="c1"># Zusammenführen &amp; speichern</span>
-<span class="k">if</span> <span class="n">all_data</span><span class="p">:</span>
-    <span class="n">df_all</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">all_data</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">df_all</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">OUTPUT_FILE</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Gespeichert als </span><span class="si">{</span><span class="n">OUTPUT_FILE</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df_all</span><span class="p">)</span><span class="si">}</span><span class="s2"> Zeilen)"</span><span class="p">)</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Keine Daten geladen."</span><span class="p">)</span>
-
-<span class="k">if</span> <span class="n">failed</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Fehlgeschlagene Ticker:"</span><span class="p">,</span> <span class="n">failed</span><span class="p">[:</span><span class="mi">20</span><span class="p">],</span> <span class="s2">"…"</span><span class="p">)</span>
-</pre></div>
-
-     </div>
-</div>
-</div>
-</div>
-
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="2.5-Einlesen-und-erste-Plausibilit%C3%A4tspr%C3%BCfung">2.5 Einlesen und erste Plausibilit&#228;tspr&#252;fung<a class="anchor-link" href="#2.5-Einlesen-und-erste-Plausibilit%C3%A4tspr%C3%BCfung">&#182;</a></h2><p>Im letzten Schritt wird geprüft, ob die Datensammlung erfolgreich war.<br>
+<h2 id="2.4.-Einlesen-und-erste-Plausibilit%C3%A4tspr%C3%BCfung">2.4. Einlesen und erste Plausibilit&#228;tspr&#252;fung<a class="anchor-link" href="#2.4.-Einlesen-und-erste-Plausibilit%C3%A4tspr%C3%BCfung">&#182;</a></h2><p>Im letzten Schritt wird geprüft, ob die Datensammlung erfolgreich war.<br>
 Dazu wird die erzeugte Datei <code>Daten/sp500_1min_2024-11-07.csv</code> wieder eingelesen und überprüft:</p>
 <ul>
 <li>Anzahl der Zeilen und Ticker  </li>
@@ -15413,7 +15448,7 @@ Die so gewonnenen 1-Minuten-Kursdaten bilden die Grundlage für die anschließen
 <div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[&nbsp;]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">DATE</span> <span class="o">=</span> <span class="s2">"2025-11-07"</span>  <span class="c1"># gleiches Datum wie beim Download</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">DATE</span> <span class="o">=</span> <span class="s2">"2025-11-13"</span>  <span class="c1"># gleiches Datum wie beim Download</span>
 <span class="n">FILE</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"Daten/sp500_1min_</span><span class="si">{</span><span class="n">DATE</span><span class="si">}</span><span class="s2">.csv"</span>
 
 <span class="c1"># === CSV einlesen ===</span>
@@ -15444,10 +15479,10 @@ Die so gewonnenen 1-Minuten-Kursdaten bilden die Grundlage für die anschließen
 
 
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain">
-<pre>Datei erfolgreich geladen: Daten/sp500_1min_2024-11-07.csv
-Anzahl Zeilen: 196667
-Anzahl Ticker: 503
-Zeitbereich: 2025-11-07 14:30:00 → 2025-11-07 21:00:00
+<pre>Datei erfolgreich geladen: Daten/sp500_1min_2025-11-11.csv
+Anzahl Zeilen: 196277
+Anzahl Ticker: 502
+Zeitbereich: 2025-11-10 14:30:00 → 2025-11-11 21:00:00
 </pre>
 </div>
 </div>
