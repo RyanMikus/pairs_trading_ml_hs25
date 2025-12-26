@@ -1,0 +1,13 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+
+# Processed / derived data
+Daten/prices_wide_cleaned.csv
+
+# Generated reports / exports
+*.pdf
+*.html
