@@ -16,25 +16,23 @@ from .technical import (
     bollinger_bands,
 )
 
-from .feature_set import (
-    build_feature_panel,
-)
+from .feature_set import build_feature_panel
 
 __all__ = [
     # base
     "log_returns",
 
-    # trend indicators
+    # trend
     "sma",
     "ema",
     "macd",
 
-    # momentum indicators
+    # momentum
     "rsi",
     "roc",
     "momentum",
 
-    # volatility indicators
+    # volatility
     "rolling_volatility",
     "bollinger_bands",
 

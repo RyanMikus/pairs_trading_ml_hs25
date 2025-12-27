@@ -17,7 +17,7 @@ from .data_cleaning import (
     find_symbols_with_long_gaps,
     drop_symbols,
     ensure_datetime_and_sort,
-    drop_duplicate_rows,          # ← NEU
+    drop_duplicate_rows,
     fill_close_gaps_per_symbol,
     symbol_lengths,
     expected_length_mode,
@@ -40,7 +40,6 @@ from .descriptive_time_series import (
 
 from .correlation import correlation_analysis
 
-# --- NEW: cointegration ---
 from .cointegration import (
     compute_daily_cointegration,
     compute_pair_stats,
@@ -59,7 +58,15 @@ from .indicator_similarity import (
     pair_corr_summary,
 )
 
+from .indicator_clustering import (
+    agglom_labels_from_dist,
+    cluster_count_table,
+    pair_proximity_table,
+    plot_corr_heatmap,
+)
+
 __all__ = [
+    # data loading
     "fetch_data",
 
     # data_quality
@@ -115,4 +122,10 @@ __all__ = [
     "symbols_from_pairs",
     "indicator_similarity_for_pairs",
     "pair_corr_summary",
+
+    # indicator clustering (NEW)
+    "agglom_labels_from_dist",
+    "cluster_count_table",
+    "pair_proximity_table",
+    "plot_corr_heatmap",
 ]
