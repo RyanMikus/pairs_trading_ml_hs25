@@ -65,6 +65,10 @@ from .indicator_clustering import (
     plot_corr_heatmap,
 )
 
+from .spread_labels import (
+    classify_top_pair_spread
+    )
+
 __all__ = [
     # data loading
     "fetch_data",
@@ -128,4 +132,7 @@ __all__ = [
     "cluster_count_table",
     "pair_proximity_table",
     "plot_corr_heatmap",
+
+    # spread labels
+    "classify_top_pair_spread",
 ]
