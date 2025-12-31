@@ -60,78 +60,42 @@ def get_log_prices(
     return log_prices
 
 def get_top_pairs_today(
-    data_dir: str = "Daten",
-    pattern: str = "sp500_1min_*.csv",
     top_n: int = 5,
     method: str = "pearson",
-    strong_threshold: float = 0.97,
-) -> pd.DataFrame:
+    strong_threshold: float = 0.90,
+) -> list[tuple[str, str]]:
     """
-    Ermittelt die Top-N Aktienpaare basierend auf Intraday-Daten
-    des letzten Handelstags.
+    Gibt eine Liste der Top-N stark korrelierten Aktienpaare
+    fuer den letzten Handelstag zurueck.
 
     Rueckgabe:
-        DataFrame mit Spalten:
-            - symbol1
-            - symbol2
-            - (optional) corr
+        [(symbol1, symbol2), ...]
     """
 
-    # ---------------------------
-    # 1) Rohdaten laden
-    # ---------------------------
-    df_raw = fetch_data(data_dir=data_dir, pattern=pattern)
+    # 1) Log-Preise selbst laden
+    log_prices = get_log_prices()
 
-    df_raw["datetime"] = pd.to_datetime(df_raw["datetime"], errors="coerce")
-    df_raw = df_raw.dropna(subset=["datetime"])
-    df_raw = df_raw.sort_values("datetime")
-
-    # ---------------------------
-    # 2) Nur letzter Handelstag
-    # ---------------------------
-    last_day = df_raw["datetime"].dt.normalize().max()
-    df_day = df_raw[df_raw["datetime"].dt.normalize() == last_day]
-
-    if df_day.empty:
-        raise ValueError("Keine Daten fuer den letzten Handelstag gefunden.")
-
-    # ---------------------------
-    # 3) Wide-Format + log prices
-    # ---------------------------
-    prices_wide = df_day.pivot_table(
-        index="datetime",
-        columns="symbol",
-        values="close"
-    )
-
-    log_prices = np.log(prices_wide)
-
-    # ---------------------------
-    # 4) Korrelationsanalyse
-    # ---------------------------
-    corr_out = correlation_analysis(
+    # 2) Korrelationsanalyse
+    out = correlation_analysis(
         prices_wide=log_prices,
         method=method,
         strong_threshold=strong_threshold,
-        plot=False
+        plot=False,
     )
 
-    strong_pairs = corr_out.get("strong_pairs")
+    strong_pairs = out["strong_pairs"]
+
     if strong_pairs is None or strong_pairs.empty:
-        raise ValueError("Keine starken Paare fuer heute gefunden.")
+        return []
 
-    # ---------------------------
-    # 5) Normiertes Rueckgabeformat
-    # ---------------------------
-    top_pairs = (
+    # 3) Top-N Paare extrahieren
+    pairs = list(
         strong_pairs
-        .rename(columns={"symbol_1": "symbol1", "symbol_2": "symbol2"})
-        .head(top_n)
-        .reset_index(drop=True)
+        .head(top_n)[["symbol_1", "symbol_2"]]
+        .itertuples(index=False, name=None)
     )
 
-    return top_pairs
-print(get_top_pairs_today())
+    return pairs
 
 
 
@@ -179,12 +143,18 @@ def classify_top_pair_spread(
     # ---------------------------
     # Paar aus Ranking auswaehlen
     # ---------------------------
-    top_pairs= get_top_pairs_today()
-    try:
-        s1 = top_pairs.iloc[pair_rank]["symbol1"]
-        s2 = top_pairs.iloc[pair_rank]["symbol2"]
-    except Exception:
-        raise ValueError("pair_rank ist ungueltig oder top_pairs leer.")
+    top_pairs = get_top_pairs_today()
+
+    if not top_pairs:
+        raise ValueError("top_pairs ist leer – keine Paare verfuegbar.")
+
+    if pair_rank < 0 or pair_rank >= len(top_pairs):
+        raise ValueError(
+            f"pair_rank={pair_rank} ist ungueltig. "
+            f"Erlaubt: 0 bis {len(top_pairs) - 1}"
+        )
+
+    s1, s2 = top_pairs[pair_rank]
 
     # ---------------------------
     # Intraday-Daten (letzter Handelstag)
@@ -207,31 +177,41 @@ def classify_top_pair_spread(
     df["spread"] = spread
 
     # ---------------------------
-    # FEATURES AUF SPREAD (t)
+    # FEATURES AUF LOG-PRICES (t)
     # ---------------------------
     if feature_specs:
-        spread_df = df["spread"].to_frame("SPREAD")
+
+        # NUR die beiden Aktien, garantiert >= 2 Spalten
+        lp_pair = log_prices[[s1, s2]]
 
         for spec in feature_specs:
             name = spec["name"]
             params = spec.get("params", {})
 
             if name == "SMA":
-                df[f"SMA_{params['window']}"] = sma(spread_df, **params)["SPREAD"]
+                out = sma(lp_pair, **params)
+                df[f"SMA_{s1}_{params['window']}"] = out[s1]
+                df[f"SMA_{s2}_{params['window']}"] = out[s2]
 
             elif name == "EMA":
-                df[f"EMA_{params['span']}"] = ema(spread_df, **params)["SPREAD"]
+                out = ema(lp_pair, **params)
+                df[f"EMA_{s1}_{params['span']}"] = out[s1]
+                df[f"EMA_{s2}_{params['span']}"] = out[s2]
 
             elif name == "RSI":
-                df[f"RSI_{params['window']}"] = rsi(spread_df, **params)["SPREAD"]
+                out = rsi(lp_pair, **params)
+                df[f"RSI_{s1}_{params['window']}"] = out[s1]
+                df[f"RSI_{s2}_{params['window']}"] = out[s2]
 
             elif name == "MACD_HIST":
-                _, _, hist = macd(spread_df, **params)
+                _, _, hist = macd(lp_pair, **params)
                 p = params
-                df[f"MACD_HIST_{p['fast']}_{p['slow']}_{p['signal']}"] = hist["SPREAD"]
+                df[f"MACD_HIST_{s1}_{p['fast']}_{p['slow']}_{p['signal']}"] = hist[s1]
+                df[f"MACD_HIST_{s2}_{p['fast']}_{p['slow']}_{p['signal']}"] = hist[s2]
 
             else:
                 raise ValueError(f"Unbekanntes Feature: {name}")
+
 
 
     # ---------------------------
