@@ -1,181 +1,177 @@
-import time
+# collect_requests.py
+# Version B: ohne yfinance – direkter Yahoo-Chart-Endpunkt mit period1/period2
+# MIT klassischer Progress-Bar (eine Zeile)
+
 import sys
+import time
+import datetime as dt
 
 import pandas as pd
 import requests
 
 
 WIKI_URL = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+YAHOO_CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
 
 
-def get_sp500_universe(
-    *,
-    replace_dot: bool = True,
-    user_agent: str = "Mozilla/5.0",
-    verbose: bool = True,
-) -> list[str]:
+def get_sp500_universe(replace_dot=True, user_agent="Mozilla/5.0", verbose=True):
+    if verbose:
+        print("Lade S&P 500 Universe von Wikipedia …")
+
     headers = {"User-Agent": user_agent}
-    resp = requests.get(WIKI_URL, headers=headers, timeout=30)
-    resp.raise_for_status()
+    html = requests.get(WIKI_URL, headers=headers, timeout=30).text
+    tables = pd.read_html(html)
 
-    tables = pd.read_html(resp.text)
-    table = next((t for t in tables if "Symbol" in t.columns), None)
-
-    if table is None:
-        raise RuntimeError("Keine 'Symbol'-Spalte auf Wikipedia gefunden")
-
-    tickers = table["Symbol"].astype(str).str.strip().tolist()
+    df = tables[0]
+    symbols = df["Symbol"].astype(str).tolist()
 
     if replace_dot:
-        tickers = [t.replace(".", "-") for t in tickers]
+        symbols = [s.replace(".", "-") for s in symbols]
 
     if verbose:
-        print("Aktienuniversum erfolgreich geladen")
-        print("Anzahl Aktien:", len(tickers))
-        print("Beispiele:", tickers[:10])
+        print("Universe Größe:", len(symbols))
 
-    return tickers
+    return symbols
 
 
-def _fetch_yahoo_intraday(
-    ticker: str,
-    *,
-    interval: str,
-    range_: str,
-    session: requests.Session,
-    timeout_s: int,
-) -> pd.DataFrame:
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
-    params = {"interval": interval, "range": range_, "region": "US", "lang": "en-US"}
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        "Accept": "application/json, text/javascript, */*; q=0.01",
+def date_to_unix_periods(date_str, tz="America/New_York"):
+    d = dt.date.fromisoformat(date_str)
+    start = pd.Timestamp(dt.datetime(d.year, d.month, d.day, 0, 0), tz=tz)
+    end = start + pd.Timedelta(days=1)
+    return int(start.timestamp()), int(end.timestamp())
+
+
+def parse_yahoo_chart_json(symbol, payload, tz="America/New_York"):
+    chart = payload.get("chart", {})
+    error = chart.get("error")
+    if error:
+        raise RuntimeError("Yahoo chart error for {}: {}".format(symbol, error))
+
+    result_list = chart.get("result") or []
+    if not result_list:
+        return pd.DataFrame()
+
+    res = result_list[0]
+    ts = res.get("timestamp") or []
+    indicators = (res.get("indicators") or {}).get("quote") or []
+    if not ts or not indicators:
+        return pd.DataFrame()
+
+    q = indicators[0]
+
+    df = pd.DataFrame(
+        {
+            "datetime": pd.to_datetime(ts, unit="s", utc=True).tz_convert(tz),
+            "open": q.get("open"),
+            "high": q.get("high"),
+            "low": q.get("low"),
+            "close": q.get("close"),
+            "volume": q.get("volume"),
+        }
+    )
+
+    df.insert(0, "symbol", symbol)
+    return df.dropna(subset=["datetime"]).copy()
+
+
+def fetch_yahoo_intraday_one_day(
+    session,
+    symbol,
+    date,
+    interval,
+    tz="America/New_York",
+    user_agent="Mozilla/5.0",
+    include_prepost=False,
+):
+    period1, period2 = date_to_unix_periods(date, tz=tz)
+
+    params = {
+        "period1": period1,
+        "period2": period2,
+        "interval": interval,
+        "includePrePost": "true" if include_prepost else "false",
+        "events": "div|split",
     }
+    headers = {"User-Agent": user_agent}
 
-    r = session.get(url, headers=headers, params=params, timeout=timeout_s)
-    if r.status_code != 200:
-        raise RuntimeError(f"{ticker}: HTTP {r.status_code}")
+    url = YAHOO_CHART_URL.format(symbol=symbol)
+    r = session.get(url, params=params, headers=headers, timeout=30)
+    r.raise_for_status()
 
-    data = r.json().get("chart", {}).get("result")
-    if not data:
-        raise RuntimeError(f"{ticker}: keine Daten")
-
-    result = data[0]
-    timestamps = result.get("timestamp")
-    quote = result.get("indicators", {}).get("quote", [{}])[0]
-
-    if not timestamps or "close" not in quote:
-        raise RuntimeError(f"{ticker}: unvollständige Daten")
-
-    df = pd.DataFrame({
-        "symbol": ticker,
-        "datetime": pd.to_datetime(timestamps, unit="s"),
-        "open": quote.get("open"),
-        "high": quote.get("high"),
-        "low": quote.get("low"),
-        "close": quote.get("close"),
-        "volume": quote.get("volume"),
-    })
-
-    df = df.loc[~df[["open", "high", "low", "close"]].isna().all(axis=1)]
-    if df.empty:
-        raise RuntimeError(f"{ticker}: nur leere Kerzen")
-
-    return df
+    return parse_yahoo_chart_json(symbol, r.json(), tz=tz)
 
 
-def _format_eta(seconds: float) -> str:
-    if seconds < 0 or seconds == float("inf"):
-        return "--:--"
-    m, s = divmod(int(seconds), 60)
-    h, m = divmod(m, 60)
-    return f"{h:d}:{m:02d}:{s:02d}" if h > 0 else f"{m:02d}:{s:02d}"
-
-
-def _print_progress(
-    *,
-    done: int,
-    total: int,
-    start_time: float,
-    last_label: str = "",
-    bar_width: int = 30,
-) -> None:
-    frac = done / total if total else 1.0
-    filled = int(bar_width * frac)
-    bar = "#" * filled + "-" * (bar_width - filled)
-
-    elapsed = time.time() - start_time
-    rate = done / elapsed if elapsed > 0 else 0.0
-    remaining = (total - done) / rate if rate > 0 else float("inf")
-
-    pct = frac * 100.0
-    eta = _format_eta(remaining)
-
-    msg = f"\r[{bar}] {done}/{total} ({pct:5.1f}%) ETA {eta}"
-    if last_label:
-        msg += f" | {last_label}"
-
+def print_progress(i, total, start_t, rows):
+    elapsed = time.time() - start_t
+    pct = (i / total) * 100
+    msg = (
+        "\rProgress: {:6.2f}% | {:4d}/{:4d} | elapsed {:6.1f}s | rows {:8d}"
+        .format(pct, i, total, elapsed, rows)
+    )
     sys.stdout.write(msg)
     sys.stdout.flush()
 
-    if done == total:
-        sys.stdout.write("\n")
-        sys.stdout.flush()
-
 
 def collect_sp500_intraday_data(
-    *,
-    universe: list[str],
-    date: str,
-    interval: str = "1m",
-    range_: str = "1d",
-    sleep_s: float = 0.1,
-    timeout_s: int = 10,
-    verbose: bool = True,
-) -> pd.DataFrame:
+    date,
+    interval="1m",
+    universe=None,
+    throttle_s=0.1,
+    verbose=True,
+):
+    if universe is None:
+        universe = get_sp500_universe(verbose=verbose)
+
+    universe = list(universe)
+    total = len(universe)
+
     if verbose:
-        print("Lade Intraday-Daten für", len(universe), "Aktien")
+        print("Sammle Intraday-Daten")
         print("Datum:", date, "| Interval:", interval)
 
-    all_data: list[pd.DataFrame] = []
-    total = len(universe)
-    start = time.time()
-
-    # Throttle für Progress-Updates
-    last_update = 0.0
-    update_every_s = 0.2
+    all_rows = []
+    start_t = time.time()
+    total_rows = 0
 
     with requests.Session() as session:
-        for i, ticker in enumerate(universe, start=1):
-            df_t = _fetch_yahoo_intraday(
-                ticker,
-                interval=interval,
-                range_=range_,
-                session=session,
-                timeout_s=timeout_s,
-            )
-            all_data.append(df_t)
+        for i, symbol in enumerate(universe, start=1):
+            try:
+                df_sym = fetch_yahoo_intraday_one_day(session, symbol, date, interval)
+                if not df_sym.empty:
+                    all_rows.append(df_sym)
+                    total_rows += len(df_sym)
+            except Exception:
+                pass
+            finally:
+                if throttle_s and throttle_s > 0:
+                    time.sleep(throttle_s)
 
             if verbose:
-                now = time.time()
-                if (now - last_update) >= update_every_s or i == total:
-                    _print_progress(
-                        done=i,
-                        total=total,
-                        start_time=start,
-                        last_label=ticker,
-                    )
-                    last_update = now
-
-            if sleep_s > 0:
-                time.sleep(sleep_s)
-
-    df_all = pd.concat(all_data, ignore_index=True)
+                print_progress(i, total, start_t, total_rows)
 
     if verbose:
-        print("\nDatensatz erstellt")
-        print("Zeilen:", len(df_all))
-        print("Ticker:", df_all["symbol"].nunique())
-        print("Zeitbereich:", df_all["datetime"].min(), " bis ", df_all["datetime"].max())
+        print()  # Zeilenumbruch nach Progress-Bar
 
-    return df_all
+    if not all_rows:
+        out = pd.DataFrame()
+    else:
+        out = pd.concat(all_rows, ignore_index=True)
+
+    if verbose:
+        if out.empty:
+            print("Keine Daten gesammelt.")
+        else:
+            print("FERTIG")
+            print("Zeilen:", len(out))
+            print("Ticker:", out["symbol"].nunique())
+            print("Zeitbereich:", out["datetime"].min(), "bis", out["datetime"].max())
+
+    return out
+
+
+if __name__ == "__main__":
+    date = sys.argv[1] if len(sys.argv) > 1 else dt.date.today().isoformat()
+    interval = sys.argv[2] if len(sys.argv) > 2 else "1m"
+
+    df = collect_sp500_intraday_data(date=date, interval=interval, verbose=True)
+    print(df.head(10))

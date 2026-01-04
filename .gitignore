@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 
+# Processed data
+.paquet
+
 # Jupyter notebooks
 .ipynb_checkpoints/
 
