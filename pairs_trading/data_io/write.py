@@ -1,70 +1,66 @@
-from pathlib import Path
-import json
 import pandas as pd
 
 from .paths import (
     as_path,
     parquet_path,
     metadata_path,
+    intraday_csv_path,
 )
 
 
-def _show_head(df: pd.DataFrame, n: int = 5) -> None:
-    try:
-        display(df.head(n))
-    except NameError:
-        print(df.head(n))
+def _print_df_overview(df: pd.DataFrame, title: str) -> None:
+    print(f"\n[{title}]")
+    print("Shape:", df.shape)
+    print("Spalten:", list(df.columns))
+    print("\nHead:")
+    print(df.head())
+
+
+def save_unprocessed_data(
+    df: pd.DataFrame,
+    *,
+    date: str,
+    interval: str,
+    data_dir: str = "Daten",
+) -> None:
+    """
+    Speichert Rohdaten (unprocessed) als CSV.
+    """
+    _print_df_overview(df, "Unprocessed Data (to be saved)")
+
+    data_dir_p = as_path(data_dir)
+    data_dir_p.mkdir(parents=True, exist_ok=True)
+
+    fp = intraday_csv_path(data_dir_p, date=date, interval=interval)
+    df.to_csv(fp, index=False)
+
+    print(f"\nGespeichert: {fp}")
 
 
 def save_preprocessed_data(
-    df_final: pd.DataFrame,
-    output_dir: str = "Daten",
-    basename: str = "prices_long_cleaned",
+    df: pd.DataFrame,
+    *,
+    data_dir: str,
+    basename: str,
+    metadata=None,
 ) -> None:
-    if not isinstance(df_final, pd.DataFrame):
-        raise TypeError("df_final must be a pandas DataFrame")
+    """
+    Speichert vorverarbeitete Daten als Parquet (+ optional Metadata).
+    """
+    _print_df_overview(df, "Preprocessed Data (to be saved)")
 
-    for col in ("datetime", "symbol"):
-        if col not in df_final.columns:
-            raise ValueError(f"df_final missing required column: '{col}'")
+    data_dir_p = as_path(data_dir)
+    data_dir_p.mkdir(parents=True, exist_ok=True)
 
-    if df_final.empty:
-        print("Warnung: df_final ist leer – es werden leere Dateien geschrieben.")
+    parquet_fp = parquet_path(data_dir_p, basename)
+    df.to_parquet(parquet_fp)
 
-    df_out = df_final.copy()
-    df_out["datetime"] = pd.to_datetime(df_out["datetime"], errors="raise")
+    if metadata is not None:
+        meta_fp = metadata_path(data_dir_p, basename)
+        import json
+        with open(meta_fp, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=2)
 
-    output_dir_p = as_path(output_dir)
-    output_dir_p.mkdir(parents=True, exist_ok=True)
+        print("Metadata gespeichert als", meta_fp)
 
-    parquet_fp = parquet_path(output_dir_p, basename)
-    meta_fp = metadata_path(output_dir_p, basename)
-
-    meta = {
-        "n_rows": int(len(df_out)),
-        "n_symbols": int(df_out["symbol"].nunique()),
-        "min_datetime": str(df_out["datetime"].min()),
-        "max_datetime": str(df_out["datetime"].max()),
-        "columns": list(df_out.columns),
-        "dtypes": {c: str(t) for c, t in df_out.dtypes.items()},
-        "format": "parquet",
-        "engine": "pyarrow",
-    }
-
-    df_out.to_parquet(
-        parquet_fp,
-        engine="pyarrow",
-        index=False,
-    )
-
-    meta_fp.write_text(
-        json.dumps(meta, indent=2),
-        encoding="utf-8",
-    )
-
-    print("Preprocessed Daten gespeichert")
-    print(f"Parquet : {parquet_fp}")
-    print(f"Metadata: {meta_fp}")
-    print(f"Rows: {len(df_out)} | Symbols: {df_out['symbol'].nunique()}")
-
-    _show_head(df_out)
+    print(f"\nGespeichert als {parquet_fp}")

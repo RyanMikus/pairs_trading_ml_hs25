@@ -26,3 +26,8 @@ def metadata_path(data_dir, basename: str) -> Path:
     if base.endswith("_metadata"):
         base = base[:-9]
     return data_dir_p / f"{base}_metadata.json"
+
+
+def intraday_csv_path(data_dir, date: str, interval: str) -> Path:
+    interval_tag = interval.replace("m", "min") if interval.endswith("m") else interval
+    return as_path(data_dir) / f"sp500_{interval_tag}_{date}.csv"
