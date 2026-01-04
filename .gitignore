@@ -5,6 +5,5 @@ __pycache__/
 # Jupyter notebooks
 .ipynb_checkpoints/
 
-# Generated reports / exports
-*.pdf
-*.html
+# Exports
+exports/
