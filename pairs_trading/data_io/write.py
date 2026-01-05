@@ -1,3 +1,13 @@
+"""
+pairs_trading.data_io.write
+
+Schreib-Funktionen für Rohdaten (CSV) und vorverarbeitete Daten (Parquet + optionale Metadata).
+
+Wichtiger Hinweis:
+- Die Print-Ausgaben (Inhalt/Reihenfolge) sind Teil des beobachtbaren Verhaltens.
+- Refactorings müssen diese Ausgaben unverändert lassen.
+"""
+
 import pandas as pd
 
 from .paths import (
@@ -6,14 +16,7 @@ from .paths import (
     metadata_path,
     intraday_csv_path,
 )
-
-
-def _print_df_overview(df: pd.DataFrame, title: str) -> None:
-    print(f"\n[{title}]")
-    print("Shape:", df.shape)
-    print("Spalten:", list(df.columns))
-    print("\nHead:")
-    print(df.head())
+from .utils import _print_df_overview
 
 
 def save_unprocessed_data(
@@ -25,6 +28,17 @@ def save_unprocessed_data(
 ) -> None:
     """
     Speichert Rohdaten (unprocessed) als CSV.
+
+    Parameter:
+    - df: zu speichernder DataFrame
+    - date: Datum als ISO-String (z. B. '2026-01-05'), wird in den Dateinamen übernommen
+    - interval: Intervall-Tag (z. B. '1m'), wird via paths.intraday_csv_path in interval_tag überführt
+    - data_dir: Zielverzeichnis (Default: 'Daten')
+
+    Side effects:
+    - Erstellt data_dir (mkdir parents=True, exist_ok=True).
+    - Schreibt eine CSV-Datei.
+    - Gibt Übersicht und Speicherpfad via print aus.
     """
     _print_df_overview(df, "Unprocessed Data (to be saved)")
 
@@ -46,6 +60,22 @@ def save_preprocessed_data(
 ) -> None:
     """
     Speichert vorverarbeitete Daten als Parquet (+ optional Metadata).
+
+    Parameter:
+    - df: zu speichernder DataFrame
+    - data_dir: Zielverzeichnis
+    - basename: Dateibasis für Parquet (mit/ohne '.parquet' möglich)
+    - metadata: optionales JSON-serialisierbares Objekt; wenn vorhanden, wird zusätzlich eine
+      '<base>_metadata.json' geschrieben
+
+    Side effects:
+    - Erstellt data_dir (mkdir parents=True, exist_ok=True).
+    - Schreibt Parquet und optional Metadata-JSON.
+    - Gibt Übersicht und Speicherstatus via print aus.
+
+    Hinweis:
+    - Der Import von 'json' erfolgt bewusst innerhalb des Metadata-Blocks.
+      (Nicht verändern, um Verhalten/Abhängigkeiten nicht zu verschieben.)
     """
     _print_df_overview(df, "Preprocessed Data (to be saved)")
 

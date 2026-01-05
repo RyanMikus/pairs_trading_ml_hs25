@@ -1,3 +1,13 @@
+"""
+pairs_trading.data_io
+
+Public API (Re-Exports) für I/O und Datensammlung im Projekt.
+
+Wichtiger Hinweis:
+- Diese Datei definiert die nach außen sichtbare Oberfläche des Subpackages.
+- Refactorings innerhalb der Module dürfen diese Importpfade und Funktionsnamen nicht brechen.
+"""
+
 from .read import (
     load_unprocessed_data,
     load_preprocessed_data,
