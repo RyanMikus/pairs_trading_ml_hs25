@@ -3,7 +3,7 @@ __pycache__/
 *.py[cod]
 
 # Processed data
-.paquet
+.parquet
 
 # Jupyter notebooks
 .ipynb_checkpoints/
