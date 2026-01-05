@@ -1,8 +1,25 @@
+"""
+pairs_trading.preprocessing.data_quality
+
+Qualitätsanalyse und Validierung für Preprocessing.
+
+Wichtiger Hinweis:
+- Print-Ausgaben (Inhalt/Reihenfolge) sind Teil des beobachtbaren Verhaltens.
+- Refactorings dürfen Funktionalität und Prints nicht verändern.
+- Funktionen in diesem Modul mutieren Eingabe-DataFrames nur, wenn dies im Docstring
+  ausdrücklich so passiert; ansonsten wird auf Kopien / lokale Series gearbeitet.
+"""
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import seaborn as sns
+
+
+# ============================================================================
+# Missing values – global & coverage analysis
+# ============================================================================
 
 def analyze_missing_values(
     df: pd.DataFrame,
@@ -52,6 +69,7 @@ def analyze_missing_values(
         plt.show()
 
     return missing_by_symbol
+
 
 def analyze_missing_coverage(
     df: pd.DataFrame,
@@ -141,6 +159,7 @@ def analyze_missing_coverage(
 
     return coverage
 
+
 def plot_intraday_missing_distribution(
     df: pd.DataFrame,
     bins: int = 40,
@@ -150,7 +169,7 @@ def plot_intraday_missing_distribution(
     """
     Plottet die Verteilung der fehlenden Zeilen über die Uhrzeit (intraday),
     aggregiert über alle Tage. Gibt das zugrundeliegende DataFrame zurück.
-    
+
     Wichtig: Mutiert df nicht.
     """
     if "datetime" not in df.columns:
@@ -198,6 +217,11 @@ def plot_intraday_missing_distribution(
         plt.show()
 
     return missing_time_df
+
+
+# ============================================================================
+# NaN gap analysis
+# ============================================================================
 
 def analyze_nan_gaps_global(
     df: pd.DataFrame,
@@ -263,6 +287,10 @@ def analyze_nan_gaps_global(
 
     return pd.DataFrame(all_gaps)
 
+
+# ============================================================================
+# Gap utilities (internal helpers)
+# ============================================================================
 
 def _gap_len_series(nan_gaps_df: pd.DataFrame, round_to_int: bool = True) -> pd.Series:
     """
@@ -401,3 +429,62 @@ def plot_stocks_vs_gap_threshold(
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.show()
+
+
+# ============================================================================
+# Validation / finalization
+# ============================================================================
+
+def validate_and_finalize_df(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Drops redundant columns and validates the cleaned long-format price DataFrame.
+    Aborts with a clear error if any consistency check fails.
+    Returns a validated copy of the DataFrame.
+    """
+
+    df = df.copy()
+
+    # --- 1) Drop redundant columns -----------------------------------------
+    if "date" in df.columns:
+        df = df.drop(columns=["date"])
+
+    # --- 2) Required columns -----------------------------------------------
+    required_cols = {"datetime", "symbol", "close_filled"}
+    missing = required_cols - set(df.columns)
+    if missing:
+        raise ValueError(f"Missing required columns: {sorted(missing)}")
+
+    # --- 3) Dtypes ----------------------------------------------------------
+    if not pd.api.types.is_datetime64_any_dtype(df["datetime"]):
+        raise TypeError("Column 'datetime' must be datetime64 dtype")
+
+    # --- 4) Key integrity ---------------------------------------------------
+    dup_mask = df.duplicated(subset=["datetime", "symbol"], keep=False)
+    if dup_mask.any():
+        n = int(dup_mask.sum())
+        raise ValueError(f"Found {n} duplicate (datetime, symbol) rows")
+
+    # --- 5) close_filled completeness --------------------------------------
+    if df["close_filled"].isna().any():
+        n = int(df["close_filled"].isna().sum())
+        raise ValueError(f"'close_filled' contains {n} NaN values")
+
+    # --- 6) Sorting (deterministic output) ---------------------------------
+    df = df.sort_values(["symbol", "datetime"]).reset_index(drop=True)
+
+    # --- 7) Summary statistics ---------------------------------------------
+    summary = {
+        "rows": len(df),
+        "symbols": int(df["symbol"].nunique()),
+        "start": df["datetime"].min(),
+        "end": df["datetime"].max(),
+        "filled_rows": int(df[["open","high","low","close"]].isna().all(axis=1).sum())
+        if {"open","high","low","close"}.issubset(df.columns)
+        else None,
+    }
+
+    print("DataFrame validation passed")
+    for k, v in summary.items():
+        print(f"  - {k}: {v}")
+
+    return df

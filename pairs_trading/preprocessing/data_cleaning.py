@@ -1,5 +1,20 @@
+"""
+pairs_trading.preprocessing.data_cleaning
+
+Bereinigungs- und Transformationsfunktionen für das Preprocessing.
+
+Wichtiger Hinweis:
+- Print-Ausgaben (falls vorhanden) und Rückgaben sind Teil des beobachtbaren Verhaltens.
+- Refactorings dürfen Funktionalität nicht verändern.
+- Dieses Modul ist bewusst "funktional" gehalten (DataFrame rein → DataFrame raus).
+"""
+
 import pandas as pd
 
+
+# ============================================================================
+# Coverage / universe filtering
+# ============================================================================
 
 def filter_symbols_by_full_coverage(
     df: pd.DataFrame,
@@ -97,6 +112,10 @@ def drop_symbols(
     return df_new
 
 
+# ============================================================================
+# Time handling, sorting, duplicates
+# ============================================================================
+
 def ensure_datetime_and_sort(
     df: pd.DataFrame,
     symbol_col: str = "symbol",
@@ -161,6 +180,10 @@ def drop_duplicate_rows(
     return df_clean
 
 
+# ============================================================================
+# Gap filling / interpolation
+# ============================================================================
+
 def fill_close_gaps_per_symbol(
     df: pd.DataFrame,
     value_col: str = "close",
@@ -195,6 +218,10 @@ def fill_close_gaps_per_symbol(
 
     return df_work.groupby(symbol_col, group_keys=False).apply(_fill_group)
 
+
+# ============================================================================
+# Length diagnostics / reporting
+# ============================================================================
 
 def symbol_lengths(df: pd.DataFrame, symbol_col: str = "symbol") -> pd.Series:
     """
