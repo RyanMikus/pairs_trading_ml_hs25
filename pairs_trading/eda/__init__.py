@@ -25,19 +25,6 @@ from .cointegration import (
     plot_intraday_spreads_last_day,
 )
 
-from .indicator_similarity import (
-    symbols_from_pairs,
-    indicator_similarity_for_pairs,
-    pair_corr_summary,
-)
-
-from .indicator_clustering import (
-    agglom_labels_from_dist,
-    cluster_count_table,
-    pair_proximity_table,
-    plot_corr_heatmap,
-)
-
 __all__ = [
     # descriptive_time_series
     "compute_returns",
@@ -64,15 +51,4 @@ __all__ = [
     "plot_daily_mean_spreads",
     "plot_intraday_prices_last_day",
     "plot_intraday_spreads_last_day",
-
-    # indicator similarity
-    "symbols_from_pairs",
-    "indicator_similarity_for_pairs",
-    "pair_corr_summary",
-
-    # indicator clustering (NEW)
-    "agglom_labels_from_dist",
-    "cluster_count_table",
-    "pair_proximity_table",
-    "plot_corr_heatmap",
 ]
