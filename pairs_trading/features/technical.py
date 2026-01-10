@@ -1,9 +1,29 @@
+"""
+Primitive technische Indikatoren auf Symbol-Ebene.
+
+Scope:
+- Reine mathematische Transformationen
+- Arbeiten ausschließlich auf Wide-Format Log-Preisen
+- Keine Paare, keine Spreads, keine Visualisierung
+
+Designentscheidungen:
+- Defensive Validierung der Inputs
+- Funktionaler Stil
+- Keine Seiteneffekte
+
+Dieses Modul stellt die niedrigste Abstraktionsebene
+im Feature-Stack dar.
+"""
+
 import numpy as np
 import pandas as pd
 from typing import Optional, Tuple
 
 
 def _validate_wide_prices(log_prices: pd.DataFrame) -> None:
+    """
+    Interne Validierung für Wide-Format Log-Preis-DataFrames.
+    """
     if not isinstance(log_prices.index, pd.DatetimeIndex):
         raise TypeError("log_prices.index must be a pandas DatetimeIndex (datetime).")
     if getattr(log_prices.columns, "nlevels", 1) != 1:
@@ -24,7 +44,12 @@ def log_returns(log_prices: pd.DataFrame) -> pd.DataFrame:
 # -----------------------------
 # Trend indicators
 # -----------------------------
-def sma(log_prices: pd.DataFrame, window: int = 20, min_periods: Optional[int] = None) -> pd.DataFrame:
+
+def sma(
+    log_prices: pd.DataFrame,
+    window: int = 20,
+    min_periods: Optional[int] = None,
+) -> pd.DataFrame:
     """
     Simple Moving Average over log prices.
     """
@@ -50,14 +75,10 @@ def macd(
     log_prices: pd.DataFrame,
     fast: int = 12,
     slow: int = 26,
-    signal: int = 9
+    signal: int = 9,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
-    MACD based on log prices:
-      macd_line = EMA_fast - EMA_slow
-      signal_line = EMA(macd_line, signal)
-      hist = macd_line - signal_line
-    Returns: (macd_line, signal_line, hist)
+    MACD based on log prices.
     """
     _validate_wide_prices(log_prices)
     if not (0 < fast < slow):
@@ -76,12 +97,14 @@ def macd(
 # -----------------------------
 # Momentum indicators
 # -----------------------------
-def roc(log_prices: pd.DataFrame, window: int = 10, min_periods: Optional[int] = None) -> pd.DataFrame:
+
+def roc(
+    log_prices: pd.DataFrame,
+    window: int = 10,
+    min_periods: Optional[int] = None,
+) -> pd.DataFrame:
     """
-    Rate of Change (ROC) on PRICE (not log price):
-        ROC = P_t / P_{t-window} - 1
-    Since we have log prices, we reconstruct P ratios via exp differences:
-        P_t / P_{t-window} = exp(logP_t - logP_{t-window})
+    Rate of Change (ROC) on PRICE reconstructed from log prices.
     """
     _validate_wide_prices(log_prices)
     if window <= 0:
@@ -91,7 +114,6 @@ def roc(log_prices: pd.DataFrame, window: int = 10, min_periods: Optional[int] =
     diff = log_prices - log_prices.shift(window)
     out = np.exp(diff) - 1.0
 
-    # Ensure first valid points reflect min_periods notion consistently
     enough = log_prices.rolling(window=window, min_periods=mp).count() >= mp
     return out.where(enough)
 
@@ -100,7 +122,6 @@ def momentum(log_prices: pd.DataFrame, window: int = 10) -> pd.DataFrame:
     """
     Momentum on log prices:
         M = logP_t - logP_{t-window}
-    (equivalent to log of the price ratio)
     """
     _validate_wide_prices(log_prices)
     if window <= 0:
@@ -108,15 +129,13 @@ def momentum(log_prices: pd.DataFrame, window: int = 10) -> pd.DataFrame:
     return log_prices - log_prices.shift(window)
 
 
-def rsi(log_prices: pd.DataFrame, window: int = 14, min_periods: Optional[int] = None) -> pd.DataFrame:
+def rsi(
+    log_prices: pd.DataFrame,
+    window: int = 14,
+    min_periods: Optional[int] = None,
+) -> pd.DataFrame:
     """
-    RSI computed from log price deltas:
-      delta = diff(logP)
-      gains = max(delta, 0)
-      losses = max(-delta, 0)
-      avg_gain = rolling_mean(gains, window)
-      avg_loss = rolling_mean(losses, window)
-      RSI = 100 - 100/(1+RS)
+    Relative Strength Index (RSI) computed from log price deltas.
     """
     _validate_wide_prices(log_prices)
     if window <= 0:
@@ -131,14 +150,18 @@ def rsi(log_prices: pd.DataFrame, window: int = 14, min_periods: Optional[int] =
     avg_loss = loss.rolling(window=window, min_periods=mp).mean()
 
     rs = avg_gain / avg_loss
-    rsi_val = 100.0 - (100.0 / (1.0 + rs))
-    return rsi_val
+    return 100.0 - (100.0 / (1.0 + rs))
 
 
 # -----------------------------
 # Volatility indicators
 # -----------------------------
-def rolling_volatility(log_prices: pd.DataFrame, window: int = 20, min_periods: Optional[int] = None) -> pd.DataFrame:
+
+def rolling_volatility(
+    log_prices: pd.DataFrame,
+    window: int = 20,
+    min_periods: Optional[int] = None,
+) -> pd.DataFrame:
     """
     Rolling standard deviation of log returns.
     """
@@ -154,14 +177,10 @@ def bollinger_bands(
     log_prices: pd.DataFrame,
     window: int = 20,
     n_std: float = 2.0,
-    min_periods: Optional[int] = None
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    min_periods: Optional[int] = None,
+):
     """
-    Bollinger Bands over log prices:
-      middle = SMA
-      upper = SMA + n_std * rolling_std
-      lower = SMA - n_std * rolling_std
-    Returns: (middle, upper, lower)
+    Bollinger Bands over log prices.
     """
     _validate_wide_prices(log_prices)
     if window <= 0:

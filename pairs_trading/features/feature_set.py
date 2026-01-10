@@ -1,6 +1,13 @@
-# ============================================================
-# ML FEATURE PANEL (Spread-basiert, rollenorientiert)
-# ============================================================
+"""
+ML Feature Panel Construction (Spread-basiert, rollenorientiert).
+
+Scope:
+- Erzeugt kompakte, modell-taugliche Feature-Panels
+- Fokus auf Stabilität, Klarheit und Wiederverwendbarkeit
+- Keine Visualisierung, keine Notebook-Abhängigkeiten
+
+Dieses Modul ist die Brücke zwischen EDA und Modellierung.
+"""
 
 import pandas as pd
 import numpy as np
@@ -35,7 +42,6 @@ def build_feature_panel(
         level 0: feature name
         level 1: pair name (e.g. AAPL_MSFT)
     """
-
     features = []
 
     for s1, s2 in pairs:
@@ -56,7 +62,6 @@ def build_feature_panel(
         df = pd.DataFrame(index=spread.index)
         df["spread"] = spread
 
-        # Dummy-wide DF for technical package compatibility
         spread_wide = pd.concat([spread, spread], axis=1)
         spread_wide.columns = ["SPREAD", "SPREAD_DUMMY"]
 
@@ -64,20 +69,16 @@ def build_feature_panel(
         # Features
         # ------------------------
 
-        # Signal
         df[f"RSI_{rsi_window}"] = rsi(spread_wide, window=rsi_window)["SPREAD"]
 
-        # State
         mean = spread.rolling(z_window).mean()
         std = spread.rolling(z_window).std().replace(0, np.nan)
         df[f"Z_{z_window}"] = (spread - mean) / std
 
-        # Regime
         df[f"VOL_{vol_window}"] = rolling_volatility(
             spread_wide, window=vol_window
         )["SPREAD"]
 
-        # Timing
         df["RETURN"] = spread.diff()
 
         # ------------------------
