@@ -1,8 +1,20 @@
-# descriptive_time_series.py
-# Minimal descriptive EDA for intraday equity time series (prices & returns)
-# - Built for many symbols (~500): cross-sectional plots + representative drill-down
-# - Keeps plotting inside this module (as requested)
-# - Assumes long df with at least: ['timestamp', 'symbol', <price_col>]
+"""
+Minimal descriptive EDA for intraday equity time series.
+
+Scope:
+- Deskriptive Statistik für viele Symbole (~500)
+- Fokus auf Cross-Section-Analysen und repräsentative Drill-Downs
+- Unterstützt Long-Format Input (timestamp, symbol, price)
+
+Designentscheidungen:
+- Funktionaler Stil (keine Klassen), Notebook- und EDA-freundlich
+- Plotting ist bewusst Teil dieses Moduls
+- Robuster Umgang mit fehlenden oder unvollständigen Daten
+
+Wichtige Hinweise:
+- Plot-Ausgaben gelten als beobachtbares Verhalten.
+- Refactorings dürfen Struktur verbessern, aber keine Outputs verändern.
+"""
 
 import numpy as np
 import pandas as pd
@@ -12,10 +24,17 @@ from scipy.stats import kurtosis as _kurtosis
 
 
 # =========================
-# Helpers
+# Helpers (internal)
 # =========================
 
 def _ensure_datetime(df, timestamp_col):
+    """
+    Normalisiert die Timestamp-Spalte zu pandas datetime.
+
+    Verhalten:
+    - Ungültige Timestamps werden zu NaT
+    - Zeilen mit NaT werden verworfen
+    """
     out = df.copy()
     out[timestamp_col] = pd.to_datetime(out[timestamp_col], utc=False, errors="coerce")
     out = out.dropna(subset=[timestamp_col])
@@ -24,8 +43,13 @@ def _ensure_datetime(df, timestamp_col):
 
 def _pivot_prices_long_to_wide(df, timestamp_col, symbol_col, price_col, freq=None):
     """
-    Long -> wide: index=timestamp, columns=symbol, values=price.
-    If freq is provided, resample by last observation within each interval.
+    Long -> Wide Transformation:
+    index = timestamp
+    columns = symbol
+    values = price
+
+    Falls freq gesetzt ist:
+    - Resampling per last observation innerhalb jedes Intervalls
     """
     tmp = df[[timestamp_col, symbol_col, price_col]].copy()
     tmp = tmp.dropna(subset=[price_col, symbol_col, timestamp_col])
@@ -41,7 +65,14 @@ def _pivot_prices_long_to_wide(df, timestamp_col, symbol_col, price_col, freq=No
 
 def compute_returns(prices_wide, log_return=True):
     """
-    Compute (log) returns from wide price panel.
+    Berechnet (Log-)Returns aus Wide-Format Preisen.
+
+    Parameter:
+    - prices_wide: DataFrame (index=datetime, columns=symbol)
+    - log_return: wenn True, log returns; sonst pct_change
+
+    Rückgabe:
+    - DataFrame gleicher Struktur wie prices_wide
     """
     if log_return:
         return np.log(prices_wide).diff()
@@ -59,7 +90,6 @@ def _kurtosis_series(x):
     x = x.dropna()
     if len(x) < 4:
         return np.nan
-    # Pearson kurtosis (normal => 3.0)
     return float(_kurtosis(x.values, fisher=False, bias=False))
 
 
@@ -82,13 +112,17 @@ def _intraday_profile_index(dt_index):
 
 
 # =========================
-# Core stats
+# Core statistics
 # =========================
 
 def cross_section_return_stats(returns_wide):
     """
-    Per-symbol summary of return distribution & a simple microstructure proxy.
-    Minimal but useful set.
+    Per-Symbol Zusammenfassung der Return-Verteilung.
+
+    Enthält:
+    - Lage- und Streuungsmaße
+    - Tail-Statistiken
+    - einfache Liquiditätsproxies
     """
     stats = pd.DataFrame(index=returns_wide.columns)
 
@@ -101,7 +135,7 @@ def cross_section_return_stats(returns_wide):
     stats["q95"] = returns_wide.apply(lambda s: _safe_quantile(s, 0.95))
     stats["q99"] = returns_wide.apply(lambda s: _safe_quantile(s, 0.99))
     stats["skew"] = returns_wide.apply(_skew_series)
-    stats["kurtosis"] = returns_wide.apply(_kurtosis_series)  # normal ≈ 3
+    stats["kurtosis"] = returns_wide.apply(_kurtosis_series)
     stats["pct_zero_returns"] = returns_wide.apply(_count_zeros)
 
     abs_r = returns_wide.abs()
@@ -113,15 +147,18 @@ def cross_section_return_stats(returns_wide):
 
 def rolling_volatility(returns_wide, window):
     """
-    Rolling volatility (std) per symbol. For intraday, window is number of bars.
+    Rolling Volatilität (Standardabweichung) pro Symbol.
     """
     return returns_wide.rolling(window).std()
 
 
 def intraday_volatility_profile(returns_wide):
     """
-    Mean absolute return per time-of-day.
-    Output: index=time-of-day, columns=symbol.
+    Mean absolute return pro Tageszeit.
+
+    Rückgabe:
+    - index = time-of-day
+    - columns = symbols
     """
     if not isinstance(returns_wide.index, pd.DatetimeIndex):
         raise TypeError("returns_wide index must be DatetimeIndex for intraday profile.")
@@ -131,15 +168,15 @@ def intraday_volatility_profile(returns_wide):
 
 
 # =========================
-# Representative selection (for 500 symbols)
+# Representative selection
 # =========================
 
 def select_representative_symbols(stats, n_top_vol=5, n_bottom_vol=5, n_median_vol=5):
     """
-    Pick a small set of symbols for drill-down plots:
-    - Top vol
-    - Bottom vol
-    - Around median vol
+    Auswahl repräsentativer Symbole für Drill-Down-Plots:
+    - hohe Volatilität
+    - niedrige Volatilität
+    - Nähe zur Median-Volatilität
     """
     s = stats.dropna(subset=["std"]).copy()
     if s.empty:
@@ -161,16 +198,22 @@ def select_representative_symbols(stats, n_top_vol=5, n_bottom_vol=5, n_median_v
 
 
 # =========================
-# Plotting (in-module)
+# Plotting (side effects)
 # =========================
 
 def plot_cross_section_hist(stats, col, bins=50, title=None):
+    """
+    Histogramm einer Cross-Section-Statistik.
+
+    Side effect:
+    - erzeugt Matplotlib-Plot + plt.show()
+    """
     s = stats[col].dropna()
     if s.empty:
         print("[plot] No data for histogram:", col)
         return
     s.hist(bins=bins)
-    plt.title(title or "Cross-section distribution: {}".format(col))
+    plt.title(title or f"Cross-section distribution: {col}")
     plt.xlabel(col)
     plt.ylabel("count")
     plt.tight_layout()
@@ -178,6 +221,12 @@ def plot_cross_section_hist(stats, col, bins=50, title=None):
 
 
 def plot_cross_section_box(stats, cols, title=None):
+    """
+    Boxplot mehrerer Cross-Section-Statistiken.
+
+    Side effect:
+    - erzeugt Matplotlib-Plot + plt.show()
+    """
     data = [stats[c].dropna().values for c in cols if c in stats.columns]
     labels = [c for c in cols if c in stats.columns]
     if not data:
@@ -192,7 +241,10 @@ def plot_cross_section_box(stats, cols, title=None):
 
 def plot_intraday_profile(profile, title=None):
     """
-    Plots the cross-section mean intraday profile (best default for ~500 symbols).
+    Plottet das mittlere Intraday-Volatilitätsprofil.
+
+    Side effect:
+    - erzeugt Matplotlib-Plot + plt.show()
     """
     if profile is None or profile.empty:
         print("[plot] No data for intraday profile.")
@@ -207,6 +259,12 @@ def plot_intraday_profile(profile, title=None):
 
 
 def plot_representative_time_series(returns_wide, symbols, kind="returns", title=None):
+    """
+    Zeitreihen-Plots für eine kleine Auswahl repräsentativer Symbole.
+
+    Side effect:
+    - erzeugt Matplotlib-Plots + plt.show()
+    """
     symbols = [s for s in symbols if s in returns_wide.columns]
     if not symbols:
         print("[plot] No representative symbols available to plot.")
@@ -215,13 +273,13 @@ def plot_representative_time_series(returns_wide, symbols, kind="returns", title
     n = len(symbols)
     fig_h = min(2.2 * n + 1.5, 30)
     returns_wide[symbols].plot(subplots=True, figsize=(12, fig_h), legend=False)
-    plt.suptitle(title or "Representative {} time series ({} symbols)".format(kind, n))
+    plt.suptitle(title or f"Representative {kind} time series ({n} symbols)")
     plt.tight_layout()
     plt.show()
 
 
 # =========================
-# End-to-end EDA step
+# End-to-end EDA pipeline
 # =========================
 
 def run_descriptive_eda(
@@ -236,12 +294,13 @@ def run_descriptive_eda(
     n_top_vol=5,
     n_bottom_vol=5,
     n_median_vol=5,
-    max_representative_plots=15
+    max_representative_plots=15,
 ):
     """
-    Minimal descriptive EDA pipeline step.
+    End-to-end deskriptiver EDA-Schritt.
 
-    Returns dict with:
+    Rückgabe:
+    dict mit:
       - prices_wide
       - returns_wide
       - stats
@@ -258,7 +317,7 @@ def run_descriptive_eda(
         timestamp_col=timestamp_col,
         symbol_col=symbol_col,
         price_col=price_col,
-        freq=freq
+        freq=freq,
     )
 
     returns_wide = compute_returns(prices_wide, log_return=log_return).dropna(how="all")
@@ -269,7 +328,7 @@ def run_descriptive_eda(
         stats,
         n_top_vol=n_top_vol,
         n_bottom_vol=n_bottom_vol,
-        n_median_vol=n_median_vol
+        n_median_vol=n_median_vol,
     )
 
     intraday_prof = None
@@ -279,14 +338,17 @@ def run_descriptive_eda(
     if plot:
         plot_cross_section_hist(stats, "std", title="Cross-section: return volatility (std)")
         plot_cross_section_hist(stats, "mean_abs_return", title="Cross-section: mean absolute return")
-        plot_cross_section_hist(stats, "pct_zero_returns", title="Cross-section: % zero returns (liquidity proxy)")
-        plot_cross_section_box(stats, ["mean", "std", "skew", "kurtosis"], title="Cross-section summary (boxplots)")
+        plot_cross_section_hist(stats, "pct_zero_returns", title="Cross-section: % zero returns")
+        plot_cross_section_box(stats, ["mean", "std", "skew", "kurtosis"])
 
         if intraday_prof is not None:
             plot_intraday_profile(intraday_prof)
 
-        reps_to_plot = reps[:max_representative_plots]
-        plot_representative_time_series(returns_wide, reps_to_plot, kind="log-returns")
+        plot_representative_time_series(
+            returns_wide,
+            reps[:max_representative_plots],
+            kind="log-returns",
+        )
 
     return {
         "prices_wide": prices_wide,

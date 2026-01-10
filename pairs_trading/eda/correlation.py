@@ -1,3 +1,23 @@
+"""
+Explorative Korrelationsanalyse für Wide-Format Preis- oder Logpreis-Zeitreihen.
+
+Scope:
+- Berechnung von Korrelationsmatrizen (Pearson / Spearman)
+- Identifikation stark korrelierter Paare
+- Auswahl repräsentativer Symbole für Visualisierung
+- Optionale Heatmap-Darstellung
+
+Designentscheidungen:
+- Funktionaler Stil, keine Klassen
+- Rückgabe eines Ergebnis-Dictionaries für flexible Weiterverarbeitung
+- Plotting ist optional, aber Teil dieser Funktion
+
+Wichtige Hinweise:
+- Die konkrete Heatmap-Gestaltung (Layout, Farben, Skalierung)
+  ist Teil des beobachtbaren Verhaltens.
+- Refactorings dürfen numerische Ergebnisse oder Plots nicht verändern.
+"""
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -13,34 +33,29 @@ def correlation_analysis(
     title=None,
 ):
     """
-    Explorative Korrelationsanalyse für Wide-Format Preis- oder Logpreis-Zeitreihen.
+    Führt eine explorative Korrelationsanalyse auf Wide-Format Zeitreihen durch.
 
-    Parameters
-    ----------
-    prices_wide : pd.DataFrame
-        Index = datetime, Columns = Symbole, Values = Preise oder Logpreise
-    method : str
-        'pearson' oder 'spearman'
-    strong_threshold : float
-        Schwelle für stark korrelierte Paare (nur obere Dreiecksmatrix)
-    top_n_heatmap : int
-        Anzahl repräsentativer Symbole für Heatmap
-    plot : bool
-        Heatmap plotten
-    title : str or None
-        Plot-Titel
+    Parameter:
+    - prices_wide: DataFrame (index=datetime, columns=symbol)
+    - method: 'pearson' oder 'spearman'
+    - strong_threshold: Schwelle für stark korrelierte Paare
+      (nur obere Dreiecksmatrix)
+    - top_n_heatmap: Anzahl repräsentativer Symbole für Heatmap
+    - plot: wenn True, wird eine Heatmap geplottet
+    - title: optionaler Plot-Titel
 
-    Returns
-    -------
-    dict with keys:
-        corr
-        strong_pairs
-        representative_symbols
-        vmin_offdiag
-        vmax_offdiag
-        corr_sub
+    Rückgabe:
+    dict mit Schlüsseln:
+      - corr: vollständige Korrelationsmatrix
+      - strong_pairs: DataFrame stark korrelierter Paare
+      - representative_symbols: Index der repräsentativen Symbole
+      - vmin_offdiag: minimale Off-Diagonal-Korrelation
+      - vmax_offdiag: maximale Off-Diagonal-Korrelation
+      - corr_sub: Submatrix für Heatmap
+
+    Side effects:
+    - Bei plot=True: Erzeugt eine Seaborn/Matplotlib-Heatmap und ruft plt.show().
     """
-
     if prices_wide.empty:
         raise ValueError("prices_wide ist leer.")
 

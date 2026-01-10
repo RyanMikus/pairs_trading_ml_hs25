@@ -1,4 +1,17 @@
-# eda/cointegration.py
+"""
+Cointegration-based exploratory analysis for intraday equity time series.
+
+Scope:
+- Engle-Granger Cointegration auf Intraday-Logpreisen
+- Aggregation zu täglichen Paar-Statistiken
+- Ranking stabiler Paare
+- Visualisierung (p-Werte, Netzwerke, Spreads, Intraday-Verläufe)
+
+Wichtige Hinweise:
+- Dieses Modul ist explizit explorativ (EDA).
+- Numerische Ergebnisse UND Plot-Layouts gelten als beobachtbares Verhalten.
+- Refactorings dürfen keinerlei Berechnung oder Visualisierung verändern.
+"""
 
 import numpy as np
 import pandas as pd
@@ -13,10 +26,13 @@ except ImportError:
 
 
 # ---------------------------
-# Helpers
+# Helpers (internal)
 # ---------------------------
 
 def _ensure_datetime_index(df, name="df"):
+    """
+    Stellt sicher, dass der Index ein pd.DatetimeIndex ist.
+    """
     if not isinstance(df.index, pd.DatetimeIndex):
         raise TypeError(f"{name}.index muss ein pd.DatetimeIndex sein.")
 
@@ -24,25 +40,25 @@ def _ensure_datetime_index(df, name="df"):
 def _try_extract_pairs_from_df(pairs_df):
     """
     Robust: akzeptiert verschiedene Pair-Formate.
+
     Unterstützt:
-      - DataFrame mit 2 relevanten Spalten (z.B. symbol1/symbol2, sym1/sym2, stock1/stock2, ...)
-      - DataFrame mit MultiIndex aus zwei Levels
-      - DataFrame mit Spalte 'pair' / 'pairs' / 'tuple' (Tuple aus 2 Symbols)
-    Rückgabe: Liste von (s1, s2)
+      - DataFrame mit 2 relevanten Spalten
+      - DataFrame mit MultiIndex aus >=2 Levels
+      - DataFrame mit Spalte 'pair' / 'pairs' / 'tuple'
     """
     if pairs_df is None or len(pairs_df) == 0:
         return []
 
-    # 1) MultiIndex mit 2 Levels
+    # 1) MultiIndex mit >=2 Levels
     if isinstance(pairs_df.index, pd.MultiIndex) and pairs_df.index.nlevels >= 2:
+        pairs = []
         lvl0 = pairs_df.index.get_level_values(0)
         lvl1 = pairs_df.index.get_level_values(1)
-        pairs = []
         for a, b in zip(lvl0, lvl1):
             pairs.append((str(a), str(b)))
         return pairs
 
-    # 2) Spalte mit Tuple
+    # 2) Tuple-Spalte
     tuple_cols = [c for c in pairs_df.columns if str(c).lower() in ("pair", "pairs", "tuple", "pair_tuple")]
     for c in tuple_cols:
         vals = pairs_df[c].dropna().values
@@ -56,10 +72,7 @@ def _try_extract_pairs_from_df(pairs_df):
         if ok and len(pairs) > 0:
             return pairs
 
-    # 3) Klassischer Fall: zwei Symbol-Spalten finden
-    cols = list(pairs_df.columns)
-
-    # bevorzugte Namenspaare
+    # 3) Bevorzugte Symbol-Spalten
     preferred = [
         ("symbol1", "symbol2"),
         ("sym1", "sym2"),
@@ -70,7 +83,7 @@ def _try_extract_pairs_from_df(pairs_df):
         ("x", "y"),
         ("left", "right"),
     ]
-    lower_map = {str(c).lower(): c for c in cols}
+    lower_map = {str(c).lower(): c for c in pairs_df.columns}
 
     for a, b in preferred:
         if a in lower_map and b in lower_map:
@@ -81,9 +94,9 @@ def _try_extract_pairs_from_df(pairs_df):
                 pairs.append((str(row[c1]), str(row[c2])))
             return pairs
 
-    # 4) Fallback: erste zwei Spalten nehmen, wenn mindestens 2 Spalten vorhanden
-    if len(cols) >= 2:
-        c1, c2 = cols[0], cols[1]
+    # 4) Fallback: erste zwei Spalten
+    if len(pairs_df.columns) >= 2:
+        c1, c2 = pairs_df.columns[:2]
         pairs = []
         for _, row in pairs_df[[c1, c2]].iterrows():
             pairs.append((str(row[c1]), str(row[c2])))
@@ -96,20 +109,23 @@ def _try_extract_pairs_from_df(pairs_df):
 
 
 def _normalize_pairs(pairs, sort_symbols=True, dedup=True):
+    """
+    Normalisiert Pair-Listen:
+    - akzeptiert Iterable oder DataFrame
+    - optionale Sortierung innerhalb des Paars
+    - optionale stabile Deduplikation
+    """
     if pairs is None:
         return []
 
-    # DataFrame -> extrahieren
     if isinstance(pairs, pd.DataFrame):
         pairs_list = _try_extract_pairs_from_df(pairs)
     else:
         pairs_list = [(str(a), str(b)) for a, b in pairs]
 
-    # sortieren innerhalb Paar (optional)
     if sort_symbols:
         pairs_list = [(a, b) if a <= b else (b, a) for a, b in pairs_list]
 
-    # dedup stable
     if dedup:
         seen = set()
         uniq = []
@@ -136,9 +152,10 @@ def compute_daily_cointegration(
     verbose=False,
 ):
     """
-    Pro Tag + Paar: Engle-Granger Cointegration p-value auf intraday log prices.
+    Pro Tag + Paar: Engle-Granger Cointegration p-value auf Intraday-Logpreisen.
 
-    Output: DataFrame mit Spalten [date, symbol1, symbol2, pvalue]
+    Output:
+    DataFrame mit Spalten [date, symbol1, symbol2, pvalue]
     """
     _ensure_datetime_index(log_prices, "log_prices")
 
@@ -194,9 +211,7 @@ def compute_daily_cointegration(
 
 def compute_pair_stats(daily_coint_df, p_thresh=0.05):
     """
-    Aggregation zu Paar-Stats.
-    Output index: (symbol1,symbol2)
-    Spalten: n_days, n_sig_days, mean_p, std_p, min_p, max_p, consistency
+    Aggregation täglicher Cointegration-Ergebnisse zu Paar-Statistiken.
     """
     if daily_coint_df is None or daily_coint_df.empty:
         return pd.DataFrame()
@@ -224,9 +239,7 @@ def compute_pair_stats(daily_coint_df, p_thresh=0.05):
 
 def rank_pairs(pair_stats, top_n=30):
     """
-    Zwei Rankings:
-      - top_pairs_consistency: consistency desc, mean_p asc
-      - top_pairs_mean_p: mean_p asc
+    Erstellt zwei Rankings stabiler Cointegration-Paare.
     """
     if pair_stats is None or pair_stats.empty:
         return pd.DataFrame(), pd.DataFrame()
@@ -353,7 +366,6 @@ def plot_coint_network(edges_df, title, seed=42, k=4, iterations=300):
 def compute_daily_spread_stats(log_prices, pairs):
     """
     Tägliche Spread-Statistiken (log spread) für gegebene Paare.
-    Output: date,symbol1,symbol2, mean_spread,std_spread,min_spread,max_spread
     """
     _ensure_datetime_index(log_prices, "log_prices")
 
