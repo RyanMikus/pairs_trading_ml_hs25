@@ -1,48 +1,60 @@
 """
 ML Feature Panel Construction (Spread-basiert, rollenorientiert).
 
-Scope:
-- Erzeugt kompakte, modell-taugliche Feature-Panels
-- Fokus auf Stabilität, Klarheit und Wiederverwendbarkeit
-- Keine Visualisierung, keine Notebook-Abhängigkeiten
+Finales Feature-Set für intraday pairs trading mit Rolling-Window-Training.
 
-Dieses Modul ist die Brücke zwischen EDA und Modellierung.
+Features (pro Pair):
+- RSI_14_spread        (Signal)
+- Z_60_spread          (State)
+- VOL_20_spread        (Regime)
+- return_pct_spread   (Timing)
+
+Design:
+- Leak-free (keine Zukunftsinformation)
+- Skalenstabil über Paare
+- RF- und XGBoost-kompatibel
+- Keine Rolling-Window-Logik hier
 """
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from .technical import (
     rsi,
-    roc,
-    momentum,
     rolling_volatility,
-    bollinger_bands,
 )
 
 
 def build_feature_panel(
-    log_prices,
-    pairs,
-    rsi_window=14,
-    z_window=60,
-    vol_window=20,
-):
+    log_prices: pd.DataFrame,
+    pairs: list[tuple[str, str]],
+    rsi_window: int = 14,
+    z_window: int = 60,
+    vol_window: int = 20,
+) -> pd.DataFrame:
     """
-    Build a compact ML feature panel for pair trading based on SPREADS.
+    Build a compact ML-ready feature panel on SPREAD level.
 
-    Features (per pair):
-      - RSI_spread        (Signal)
-      - ZScore_spread     (State)
-      - VOL_spread        (Regime)
-      - return_spread     (Timing)
+    Parameters
+    ----------
+    log_prices : pd.DataFrame
+        Wide-format DataFrame of log prices (DatetimeIndex, symbols as columns).
+        Expected to be built from close_filled.
+    pairs : list of tuple(str, str)
+        List of symbol pairs, e.g. [("AAPL", "MSFT"), ...]
+    rsi_window : int
+    z_window : int
+    vol_window : int
 
-    Output:
-      DataFrame with MultiIndex columns:
+    Returns
+    -------
+    pd.DataFrame
+        Feature panel with MultiIndex columns:
         level 0: feature name
         level 1: pair name (e.g. AAPL_MSFT)
     """
-    features = []
+
+    feature_blocks = []
 
     for s1, s2 in pairs:
         if s1 not in log_prices.columns or s2 not in log_prices.columns:
@@ -50,48 +62,64 @@ def build_feature_panel(
 
         pair_name = f"{s1}_{s2}"
         prices = log_prices[[s1, s2]].dropna()
-        if len(prices) < max(z_window, vol_window):
+
+        if len(prices) < max(rsi_window, z_window, vol_window):
             continue
 
-        # ------------------------
-        # Spread construction
-        # ------------------------
+        # -------------------------------------------------
+        # Spread construction (static hedge ratio)
+        # -------------------------------------------------
         beta, _ = np.polyfit(prices[s2].values, prices[s1].values, 1)
         spread = prices[s1] - beta * prices[s2]
 
         df = pd.DataFrame(index=spread.index)
         df["spread"] = spread
 
+        # Wide-format requirement for technical indicators
         spread_wide = pd.concat([spread, spread], axis=1)
         spread_wide.columns = ["SPREAD", "SPREAD_DUMMY"]
 
-        # ------------------------
+        # -------------------------------------------------
         # Features
-        # ------------------------
+        # -------------------------------------------------
 
-        df[f"RSI_{rsi_window}"] = rsi(spread_wide, window=rsi_window)["SPREAD"]
+        # Signal
+        df[f"RSI_{rsi_window}_spread"] = rsi(
+            spread_wide, window=rsi_window
+        )["SPREAD"]
 
+        # State
         mean = spread.rolling(z_window).mean()
         std = spread.rolling(z_window).std().replace(0, np.nan)
-        df[f"Z_{z_window}"] = (spread - mean) / std
+        df[f"Z_{z_window}_spread"] = (spread - mean) / std
 
-        df[f"VOL_{vol_window}"] = rolling_volatility(
+        # Regime
+        df[f"VOL_{vol_window}_spread"] = rolling_volatility(
             spread_wide, window=vol_window
         )["SPREAD"]
 
-        df["RETURN"] = spread.diff()
+        # Timing / Magnitude (skaleninvariant)
+        prev_abs = spread.shift(1).abs().replace(0, np.nan)
+        df["return_pct_spread"] = (
+            (spread - spread.shift(1)) / prev_abs * 100.0
+        )
 
-        # ------------------------
-        # Formatting
-        # ------------------------
+        # -------------------------------------------------
+        # Final formatting
+        # -------------------------------------------------
         df = df.dropna()
+
         df.columns = pd.MultiIndex.from_product(
             (df.columns, [pair_name])
         )
 
-        features.append(df)
+        feature_blocks.append(df)
 
-    if not features:
+    if not feature_blocks:
         raise ValueError("No valid pair features could be constructed.")
 
-    return pd.concat(features, axis=1).sort_index(axis=1)
+    return (
+        pd.concat(feature_blocks, axis=1)
+        .sort_index(axis=1)
+        .sort_index()
+    )
