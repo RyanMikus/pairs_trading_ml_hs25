@@ -10,3 +10,6 @@ __pycache__/
 
 # Exports
 exports/
+
+# Cache
+cache_pairs/
