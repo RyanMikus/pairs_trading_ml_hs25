@@ -1,0 +1,22 @@
+@startuml
+title ML-Pipeline (Walk-Forward)
+
+start
+:Load preprocessed data;
+:Project-specific preprocessing;
+:Pivot Long -> Wide;
+:Compute log prices;
+:Walk-forward setup;
+
+:Define models\n(LogReg, RF, XGB, VoteSoft);
+
+if (XGB learning_rate tuning?) then (yes)
+  :Walk-forward evaluation\n(per LR);
+  :Select best LR;
+endif
+
+:Final walk-forward run;
+:Evaluation & diagnostics\n(AUC, ROC, stability);
+:Trading inspection\n(PnL, equity);
+stop
+@enduml
