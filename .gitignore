@@ -11,5 +11,8 @@ __pycache__/
 # Exports
 exports/
 
+# Vorlesungsunterlagen
+Vorlesung/
+
 # Cache
 cache_pairs/
