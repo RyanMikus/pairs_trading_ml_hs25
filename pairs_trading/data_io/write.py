@@ -24,7 +24,7 @@ def save_unprocessed_data(
     *,
     date: str,
     interval: str,
-    data_dir: str = "Daten",
+    data_dir: str = "data/raw",
 ) -> None:
     """
     Speichert Rohdaten (unprocessed) als CSV.
@@ -33,7 +33,7 @@ def save_unprocessed_data(
     - df: zu speichernder DataFrame
     - date: Datum als ISO-String (z. B. '2026-01-05'), wird in den Dateinamen übernommen
     - interval: Intervall-Tag (z. B. '1m'), wird via paths.intraday_csv_path in interval_tag überführt
-    - data_dir: Zielverzeichnis (Default: 'Daten')
+    - data_dir: Zielverzeichnis (Default: 'data/raw')
 
     Side effects:
     - Erstellt data_dir (mkdir parents=True, exist_ok=True).
