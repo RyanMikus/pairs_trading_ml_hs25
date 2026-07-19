@@ -94,12 +94,17 @@ def analyze_missing_coverage(
 
     # Nur lokale Series; df bleibt unverändert
     dt = pd.to_datetime(df["datetime"], errors="coerce")
+    if dt.dt.tz is None:
+        dt = dt.dt.tz_localize("UTC")
+    dt = dt.dt.tz_convert("America/New_York")
     order = dt.argsort(kind="mergesort")  # stabil, optional
     dt = dt.iloc[order].reset_index(drop=True)
 
     is_missing_row = df.isna().any(axis=1).iloc[order].reset_index(drop=True)
 
-    # date/time lokal erzeugen
+    # date/time lokal erzeugen (America/New_York statt UTC, damit z. B. die
+    # Marktöffnung unabhängig von Sommer-/Winterzeit immer bei derselben
+    # Uhrzeit liegt und Tage im Plot vergleichbar sind)
     dates = dt.dt.date
     times = dt.dt.time
 
@@ -176,6 +181,9 @@ def plot_intraday_missing_distribution(
         raise KeyError("Spalte 'datetime' fehlt im DataFrame")
 
     dt = pd.to_datetime(df["datetime"], errors="coerce")
+    if dt.dt.tz is None:
+        dt = dt.dt.tz_localize("UTC")
+    dt = dt.dt.tz_convert("America/New_York")
     is_missing_row = df.isna().any(axis=1)
 
     # fehlende Zeilen pro Zeitstempel (über alle Tage)

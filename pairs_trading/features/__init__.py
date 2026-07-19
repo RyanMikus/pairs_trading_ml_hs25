@@ -46,7 +46,7 @@ from .technical import (
     bollinger_bands,
 )
 
-from .feature_set import build_feature_panel
+from .feature_set import build_feature_panel, build_train_test_feature_panels
 
 from .feature_eda import (
     compute_pair_feature_df,
@@ -73,6 +73,7 @@ __all__ = [
 
     # feature collections (ML-ready)
     "build_feature_panel",
+    "build_train_test_feature_panels",
 
     # pair-level EDA
     "compute_pair_feature_df",

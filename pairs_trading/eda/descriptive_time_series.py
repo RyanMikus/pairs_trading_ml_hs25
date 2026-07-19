@@ -232,7 +232,7 @@ def plot_cross_section_box(stats, cols, title=None):
     if not data:
         print("[plot] No data for boxplot.")
         return
-    plt.boxplot(data, labels=labels, showfliers=False)
+    plt.boxplot(data, tick_labels=labels, showfliers=False)
     plt.title(title or "Cross-section boxplot")
     plt.xticks(rotation=30, ha="right")
     plt.tight_layout()

@@ -12,7 +12,6 @@ Wichtiger Hinweis:
 
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 
@@ -24,11 +23,6 @@ from pairs_trading.modeling import pair_selection
 # ============================================================================
 # Interne Hilfsfunktionen
 # ============================================================================
-
-def _slice_by_days(df_wide: pd.DataFrame, days: pd.Index) -> pd.DataFrame:
-    mask = df_wide.index.normalize().isin(days)
-    return df_wide.loc[mask].copy()
-
 
 def _get_pairs(
     day,
@@ -94,8 +88,6 @@ def walk_forward_run(
         idx_day = all_days.get_loc(day)
 
         train_days = all_days[idx_day - lookback_train_days: idx_day]
-        lp_train = _slice_by_days(log_prices, train_days)
-        lp_test = _slice_by_days(log_prices, pd.Index([day]))
 
         top_pairs_df = _get_pairs(
             day=day,
@@ -113,8 +105,9 @@ def walk_forward_run(
 
         pairs = list(top_pairs_df[["symbol1", "symbol2"]].itertuples(index=False, name=None))
 
-        panel_train = features.build_feature_panel(lp_train, pairs, rsi_w, z_w, vol_w)
-        panel_test = features.build_feature_panel(lp_test, pairs, rsi_w, z_w, vol_w)
+        panel_train, panel_test = features.build_train_test_feature_panels(
+            log_prices, pairs, train_days, day, rsi_w, z_w, vol_w
+        )
 
         X_train, y_train, _ = dataset.build_Xy_from_feature_panel(panel_train, k, rsi_w, z_w, vol_w)
         X_test, y_test, _ = dataset.build_Xy_from_feature_panel(panel_test, k, rsi_w, z_w, vol_w)
@@ -173,8 +166,8 @@ def walk_forward_collect_trading_artifacts(
     min_test_samples: int = 50,
 ) -> pd.DataFrame:
     """
-    Sammelte Trading-relevante Artefakte (Proba, Z-Werte, Spread-Renditen)
-    für ein einzelnes Modell im Walk-forward-Setting.
+    Sammelte Trading-relevante Artefakte (Proba, Z-Werte, Spread-Niveau,
+    Spread-Renditen) für ein einzelnes Modell im Walk-forward-Setting.
     """
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -182,14 +175,9 @@ def walk_forward_collect_trading_artifacts(
     model = models[model_name]
     records = []
 
-    z_col = f"Z_{z_w}_spread"
-
     for day in test_days:
         idx_day = all_days.get_loc(day)
         train_days = all_days[idx_day - lookback_train_days: idx_day]
-
-        lp_train = _slice_by_days(log_prices, train_days)
-        lp_test = _slice_by_days(log_prices, pd.Index([day]))
 
         top_pairs_df = _get_pairs(
             day=day,
@@ -207,8 +195,9 @@ def walk_forward_collect_trading_artifacts(
 
         pairs = list(top_pairs_df[["symbol1", "symbol2"]].itertuples(index=False, name=None))
 
-        panel_train = features.build_feature_panel(lp_train, pairs, rsi_w, z_w, vol_w)
-        panel_test = features.build_feature_panel(lp_test, pairs, rsi_w, z_w, vol_w)
+        panel_train, panel_test = features.build_train_test_feature_panels(
+            log_prices, pairs, train_days, day, rsi_w, z_w, vol_w
+        )
 
         X_train, y_train, _ = dataset.build_Xy_from_feature_panel(panel_train, k, rsi_w, z_w, vol_w)
         X_test, y_test, meta = dataset.build_Xy_from_feature_panel(
@@ -221,10 +210,12 @@ def walk_forward_collect_trading_artifacts(
         model.fit(X_train, y_train)
         proba = model.predict_proba(X_test)[:, 1]
 
-        z_now = panel_test.xs(z_col, level=0, axis=1).stack().reset_index(drop=True)
-        z_fut = z_now.groupby(meta["pair"]).shift(-k)
-        spread_ret_k = z_now - z_fut
-
+        # 'z' und 'spread_ret_k' kommen direkt aus 'meta' (siehe dataset.py),
+        # garantiert zeilenweise auf X_test/proba ausgerichtet. Eine fruehere
+        # Version rekonstruierte beide Werte hier separat via panel.stack(),
+        # was eine andere Zeilenreihenfolge ergab und z/spread_ret_k teils
+        # falschen (datetime, pair)-Kombinationen zuordnete. Siehe
+        # SESSION_CHANGES.md, Abschnitt 7.5.
         day_ts = pd.to_datetime(day)
 
         for i in range(len(X_test)):
@@ -232,9 +223,10 @@ def walk_forward_collect_trading_artifacts(
                 "day": day_ts,
                 "datetime": meta.loc[i, "datetime"],
                 "pair": meta.loc[i, "pair"],
-                "z": float(z_now.iloc[i]),
+                "z": float(meta.loc[i, "z"]),
                 "proba": float(proba[i]),
-                "spread_ret_k": float(spread_ret_k.iloc[i]),
+                "spread_ret_k": float(meta.loc[i, "spread_ret_k"]),
+                "spread": float(meta.loc[i, "spread"]),
             })
 
     return pd.DataFrame(records).dropna()

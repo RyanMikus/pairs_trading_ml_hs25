@@ -4,6 +4,7 @@ __pycache__/
 
 # Processed data
 *.parquet
+*_metadata.json
 
 # Jupyter notebooks
 .ipynb_checkpoints/

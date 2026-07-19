@@ -14,6 +14,7 @@ from . import preprocessing
 from . import eda
 from . import features
 from . import modeling
+from . import backtest
 
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "eda",
     "features",
     "modeling",
+    "backtest",
 ]

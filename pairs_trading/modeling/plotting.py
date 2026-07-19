@@ -75,7 +75,7 @@ def plot_auc_boxplot(
     models = list(final_scores["model"].unique())
     data = [final_scores.loc[final_scores["model"] == m, "auc"].values for m in models]
 
-    plt.boxplot(data, labels=models, showfliers=showfliers)
+    plt.boxplot(data, tick_labels=models, showfliers=showfliers)
     plt.ylabel("AUC")
     plt.title(title)
     plt.grid(alpha=0.2)

@@ -21,15 +21,6 @@ from pairs_trading.modeling import pair_selection
 
 
 # ============================================================================
-# Interne Hilfsfunktionen
-# ============================================================================
-
-def _slice_by_days(df_wide: pd.DataFrame, days: pd.Index) -> pd.DataFrame:
-    mask = df_wide.index.normalize().isin(days)
-    return df_wide.loc[mask].copy()
-
-
-# ============================================================================
 # ROC-Auswertung
 # ============================================================================
 
@@ -75,9 +66,6 @@ def roc_mean_std_band(
         idx_day = all_days.get_loc(day)
         train_days = all_days[idx_day - lookback_train_days: idx_day]
 
-        lp_train = _slice_by_days(log_prices, train_days)
-        lp_test = _slice_by_days(log_prices, pd.Index([day]))
-
         _, top_pairs_df = pair_selection.get_pairs_for_test_day(
             day=day,
             all_days=all_days,
@@ -94,8 +82,9 @@ def roc_mean_std_band(
 
         pairs = list(top_pairs_df[["symbol1", "symbol2"]].itertuples(index=False, name=None))
 
-        panel_train = features.build_feature_panel(lp_train, pairs, rsi_w, z_w, vol_w)
-        panel_test = features.build_feature_panel(lp_test, pairs, rsi_w, z_w, vol_w)
+        panel_train, panel_test = features.build_train_test_feature_panels(
+            log_prices, pairs, train_days, day, rsi_w, z_w, vol_w
+        )
 
         X_train, y_train, _ = dataset.build_Xy_from_feature_panel(panel_train, k, rsi_w, z_w, vol_w)
         X_test, y_test, _ = dataset.build_Xy_from_feature_panel(panel_test, k, rsi_w, z_w, vol_w)
@@ -169,9 +158,6 @@ def confusion_for_model(
         idx_day = all_days.get_loc(day)
         train_days = all_days[idx_day - lookback_train_days: idx_day]
 
-        lp_train = _slice_by_days(log_prices, train_days)
-        lp_test = _slice_by_days(log_prices, pd.Index([day]))
-
         _, top_pairs_df = pair_selection.get_pairs_for_test_day(
             day=day,
             all_days=all_days,
@@ -188,8 +174,9 @@ def confusion_for_model(
 
         pairs = list(top_pairs_df[["symbol1", "symbol2"]].itertuples(index=False, name=None))
 
-        panel_train = features.build_feature_panel(lp_train, pairs, rsi_w, z_w, vol_w)
-        panel_test = features.build_feature_panel(lp_test, pairs, rsi_w, z_w, vol_w)
+        panel_train, panel_test = features.build_train_test_feature_panels(
+            log_prices, pairs, train_days, day, rsi_w, z_w, vol_w
+        )
 
         X_train, y_train, _ = dataset.build_Xy_from_feature_panel(panel_train, k, rsi_w, z_w, vol_w)
         X_test, y_test, _ = dataset.build_Xy_from_feature_panel(panel_test, k, rsi_w, z_w, vol_w)

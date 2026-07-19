@@ -16,6 +16,7 @@ Wichtige Hinweise:
 import sys
 import time
 import datetime as dt
+from io import StringIO
 
 import pandas as pd
 import requests
@@ -46,8 +47,9 @@ def get_sp500_universe(replace_dot=True, user_agent="Mozilla/5.0", verbose=True)
         print("Lade S&P 500 Universe von Wikipedia …")
 
     headers = {"User-Agent": user_agent}
-    html = requests.get(WIKI_URL, headers=headers, timeout=30).text
-    tables = pd.read_html(html)
+    r = requests.get(WIKI_URL, headers=headers, timeout=30)
+    r.raise_for_status()
+    tables = pd.read_html(StringIO(r.text))
 
     df = tables[0]
     symbols = df["Symbol"].astype(str).tolist()

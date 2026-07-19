@@ -9,6 +9,7 @@ Wichtiger Hinweis:
 - Dieses Modul ist bewusst "funktional" gehalten (DataFrame rein → DataFrame raus).
 """
 
+import numpy as np
 import pandas as pd
 
 
@@ -181,6 +182,150 @@ def drop_duplicate_rows(
 
 
 # ============================================================================
+# Preis-Ausreisser ("Bad Ticks")
+# ============================================================================
+
+def flag_price_spikes(
+    df: pd.DataFrame,
+    price_col: str = "close",
+    symbol_col: str = "symbol",
+    time_col: str = "datetime",
+    threshold: float = 0.5,
+    snapback_frac: float = 0.3,
+) -> pd.Series:
+    """
+    Markiert einzelne Bar-Ausreisser ("Bad Ticks") je Symbol.
+
+    Ein Punkt gilt als Ausreisser, wenn der log-Return zur Vorgängerzeile
+    betragsmässig über 'threshold' liegt UND der log-Return zur Folgezeile
+    das Gegenvorzeichen hat und den Ausschlag zu mindestens (1 - snapback_frac)
+    wieder rückgängig macht (V-förmiger Snap-back).
+
+    Das unterscheidet einzelne Fehlmessungen (z. B. ein fehlerhafter
+    "Official Close"-Print) von echten, dauerhaften Kurssprüngen
+    (z. B. ein Übernacht-Gap durch Earnings), die absichtlich NICHT
+    markiert werden sollen.
+
+    Randfall: Für die letzte Beobachtung je Symbol existiert keine Folgezeile,
+    der Snap-back kann also nicht geprüft werden. Dort wird stattdessen
+    zusätzlich verlangt, dass der Wert auch vom Median des jeweiligen Tages
+    stark abweicht -- das erkennt z. B. einen fehlerhaften "Official Close"
+    am letzten Handelstag des gesamten Datensatzes, für den es keine
+    Folgeminute mehr gibt.
+
+    Returns:
+      - boolean Series (gleicher Index wie df), True = Ausreisser
+    """
+    missing = {symbol_col, time_col, price_col} - set(df.columns)
+    if missing:
+        raise KeyError(f"df fehlt Spalten: {sorted(missing)}")
+
+    df_sorted = df.sort_values([symbol_col, time_col])
+    log_p = np.log(df_sorted[price_col])
+    g = df_sorted[symbol_col]
+
+    ret_in = log_p.groupby(g).diff()
+    ret_out = log_p.groupby(g).diff().shift(-1)
+
+    is_snapback_spike = (
+        (ret_in.abs() > threshold)
+        & (np.sign(ret_in) == -np.sign(ret_out))
+        & ((ret_in + ret_out).abs() < snapback_frac * ret_in.abs())
+    )
+
+    day = df_sorted[time_col].dt.date
+    daily_median_log_p = log_p.groupby([g, day]).transform("median")
+    dev_from_day_median = (log_p - daily_median_log_p).abs()
+    is_last_per_symbol = ret_out.isna() & log_p.notna()
+    is_boundary_spike = (
+        is_last_per_symbol
+        & (ret_in.abs() > threshold)
+        & (dev_from_day_median > threshold)
+    )
+
+    is_spike = is_snapback_spike | is_boundary_spike
+
+    return is_spike.reindex(df.index).fillna(False)
+
+
+# ============================================================================
+# Preisniveau-Brüche (Aktiensplits / Reverse-Splits)
+# ============================================================================
+
+def detect_price_level_breaks(
+    df: pd.DataFrame,
+    price_col: str = "close",
+    symbol_col: str = "symbol",
+    time_col: str = "datetime",
+    lower: float = 0.6,
+    upper: float = 1.6,
+) -> pd.DataFrame:
+    """
+    Findet permanente Preisniveau-Brüche je Symbol (typischerweise
+    Aktiensplits oder Reverse-Splits), die in den Rohdaten nicht bereinigt
+    wurden.
+
+    Berechnet den täglichen Median-Preis je Symbol und markiert Tage, an
+    denen das Verhältnis zum Vortag ausserhalb von [lower, upper] liegt. Im
+    Gegensatz zu flag_price_spikes() wird hier NICHT auf einen Snap-back
+    geprüft -- der Bruch soll ja gerade dauerhaft sein, nicht isoliert.
+
+    Returns:
+      - DataFrame mit Spalten [symbol_col, 'date', 'ratio'], eine Zeile pro
+        erkanntem Bruch
+    """
+    missing = {symbol_col, time_col, price_col} - set(df.columns)
+    if missing:
+        raise KeyError(f"df fehlt Spalten: {sorted(missing)}")
+
+    tmp = df[[symbol_col, time_col, price_col]].copy()
+    tmp["date"] = tmp[time_col].dt.date
+
+    daily = tmp.groupby([symbol_col, "date"])[price_col].median().reset_index()
+    daily = daily.sort_values([symbol_col, "date"])
+    daily["ratio"] = daily.groupby(symbol_col)[price_col].pct_change() + 1
+
+    breaks = daily[(daily["ratio"] < lower) | (daily["ratio"] > upper)].copy()
+    return breaks[[symbol_col, "date", "ratio"]].reset_index(drop=True)
+
+
+def adjust_for_price_level_breaks(
+    df: pd.DataFrame,
+    breaks: pd.DataFrame,
+    price_cols=("close",),
+    symbol_col: str = "symbol",
+    time_col: str = "datetime",
+) -> pd.DataFrame:
+    """
+    Passt historische Preise rückwirkend an einen erkannten Preisniveau-Bruch
+    an (Split-Adjustierung), damit die Zeitreihe wieder durchgängig
+    vergleichbar ist.
+
+    Für jede Zeile in 'breaks' (symbol_col, 'date', 'ratio') werden alle
+    Preise des betroffenen Symbols VOR 'date' mit 'ratio' multipliziert.
+    Mehrere Brüche pro Symbol werden in chronologischer Reihenfolge
+    angewendet, sodass sich die Anpassungen korrekt kumulieren.
+
+    Returns:
+      - df (Kopie) mit angepassten price_cols
+    """
+    missing = {symbol_col, time_col} - set(df.columns)
+    if missing:
+        raise KeyError(f"df fehlt Spalten: {sorted(missing)}")
+
+    df = df.copy()
+    breaks = breaks.sort_values([symbol_col, "date"])
+
+    for _, row in breaks.iterrows():
+        sym, brk_date, ratio = row[symbol_col], row["date"], row["ratio"]
+        mask = (df[symbol_col] == sym) & (df[time_col].dt.date < brk_date)
+        for col in price_cols:
+            df.loc[mask, col] = df.loc[mask, col] * ratio
+
+    return df
+
+
+# ============================================================================
 # Gap filling / interpolation
 # ============================================================================
 
@@ -216,7 +361,12 @@ def fill_close_gaps_per_symbol(
         g[out_col] = s_filled
         return g.reset_index()
 
-    return df_work.groupby(symbol_col, group_keys=False).apply(_fill_group)
+    return (
+        df_work.groupby(symbol_col, group_keys=True)
+        .apply(_fill_group)
+        .reset_index(level=0)
+        .reset_index(drop=True)
+    )
 
 
 # ============================================================================
@@ -241,11 +391,21 @@ def expected_length_mode(lengths: pd.Series) -> int:
     return int(lengths.mode().iloc[0])
 
 
-def symbols_with_unexpected_length(lengths: pd.Series, expected_length: int) -> pd.Series:
+def symbols_with_unexpected_length(
+    lengths: pd.Series,
+    expected_length: int,
+    tolerance: float = 0.0,
+) -> pd.Series:
     """
-    Liefert Series der Symbole, deren Länge != expected_length ist.
+    Liefert Series der Symbole, deren Länge um mehr als 'tolerance'
+    (relativer Anteil von expected_length) von expected_length abweicht.
+
+    tolerance=0.0 (Default) entspricht einem exakten Abgleich
+    (lengths != expected_length).
     """
-    return lengths[lengths != expected_length]
+    lower = expected_length * (1 - tolerance)
+    upper = expected_length * (1 + tolerance)
+    return lengths[(lengths < lower) | (lengths > upper)]
 
 
 def removed_symbols_between(

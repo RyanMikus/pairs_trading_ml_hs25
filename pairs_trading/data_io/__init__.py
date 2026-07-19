@@ -11,6 +11,7 @@ Wichtiger Hinweis:
 from .read import (
     load_unprocessed_data,
     load_preprocessed_data,
+    load_metadata,
 )
 
 from .write import (
@@ -26,6 +27,7 @@ from .collect import (
 __all__ = [
     "load_unprocessed_data",
     "load_preprocessed_data",
+    "load_metadata",
     "save_unprocessed_data",
     "save_preprocessed_data",
     "get_sp500_universe",

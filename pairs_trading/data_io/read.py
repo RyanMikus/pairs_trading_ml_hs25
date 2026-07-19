@@ -8,10 +8,11 @@ Wichtiger Hinweis:
 - Refactorings müssen diese Ausgaben unverändert lassen.
 """
 
+import json
 import pandas as pd
 from typing import Optional, List
 
-from .paths import unprocessed_files, parquet_path
+from .paths import unprocessed_files, parquet_path, metadata_path
 from .utils import _print_df_overview
 
 
@@ -86,3 +87,36 @@ def load_preprocessed_data(
     _print_df_overview(df, "Preprocessed Data")
 
     return df
+
+
+def load_metadata(
+    *,
+    data_dir: str,
+    basename: str,
+) -> dict:
+    """
+    Lädt die zu vorverarbeiteten Daten gehörende Metadata-JSON (Gegenstück zu
+    save_preprocessed_data(..., metadata=...)).
+
+    Parameter:
+    - data_dir: Verzeichnis der Daten
+    - basename: Dateibasis (mit/ohne '.parquet' oder '_metadata.json' möglich);
+      wird über paths.metadata_path normalisiert
+
+    Rückgabe:
+    - dict mit den gespeicherten Metadaten
+
+    Side effects:
+    - Gibt Pfad und geladene Metadaten via print aus.
+    """
+    fp = metadata_path(data_dir, basename)
+
+    print(f"\n[Metadata Load]")
+    print("Pfad:", fp)
+
+    with open(fp, "r", encoding="utf-8") as f:
+        meta = json.load(f)
+
+    print("Metadaten:", meta)
+
+    return meta
